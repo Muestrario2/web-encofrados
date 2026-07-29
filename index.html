@@ -330,7 +330,7 @@
         if (e.key === 'Enter') { verificarPassword(); }
     });
 
-    // FUNCIÓN PARA MOSTRAR NOTIFICACIONES TOAST CORPORATIVAS
+    // NOTIFICACIÓN NATIVA FLOTANTE (Sin depender de Bootstrap)
     function mostrarToast(mensaje, tipo = 'success') {
         const toastEl = document.getElementById('enterpriseToast');
         const toastBody = document.getElementById('toast-body');
@@ -338,13 +338,15 @@
         toastBody.innerText = mensaje;
         
         if (tipo === 'success') {
-            toastEl.className = 'toast align-items-center text-white bg-success border-0 shadow-lg';
+            toastEl.className = 'toast align-items-center text-white bg-success border-0 shadow-lg show';
         } else {
-            toastEl.className = 'toast align-items-center text-white bg-danger border-0 shadow-lg';
+            toastEl.className = 'toast align-items-center text-white bg-danger border-0 shadow-lg show';
         }
         
-        const toast = new bootstrap.Toast(toastEl, { delay: 3500 });
-        toast.show();
+        // Se oculta automáticamente a los 3.5 segundos de forma limpia
+        setTimeout(() => {
+            toastEl.className = 'toast align-items-center text-white border-0 shadow-lg';
+        }, 3500);
     }
 
     let miGrafico = null;
