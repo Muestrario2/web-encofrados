@@ -288,6 +288,18 @@
     </div>
 </div>
 
+<!-- CONTENEDOR DE TOASTS / NOTIFICACIONES FLOTANTES -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 3000;">
+    <div id="enterpriseToast" class="toast align-items-center text-white border-0 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true" style="border-radius: 10px;">
+        <div class="d-flex">
+            <div id="toast-body" class="toast-body fw-semibold py-3 fs-6">
+                Mensaje del sistema
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
 <script>
     function verificarPassword() {
         const pass = document.getElementById('passInput').value.trim();
@@ -317,6 +329,23 @@
     document.getElementById('passInput').addEventListener('keypress', function (e) {
         if (e.key === 'Enter') { verificarPassword(); }
     });
+
+    // FUNCIÓN PARA MOSTRAR NOTIFICACIONES TOAST CORPORATIVAS
+    function mostrarToast(mensaje, tipo = 'success') {
+        const toastEl = document.getElementById('enterpriseToast');
+        const toastBody = document.getElementById('toast-body');
+        
+        toastBody.innerText = mensaje;
+        
+        if (tipo === 'success') {
+            toastEl.className = 'toast align-items-center text-white bg-success border-0 shadow-lg';
+        } else {
+            toastEl.className = 'toast align-items-center text-white bg-danger border-0 shadow-lg';
+        }
+        
+        const toast = new bootstrap.Toast(toastEl, { delay: 3500 });
+        toast.show();
+    }
 
     let miGrafico = null;
 
@@ -402,33 +431,82 @@
         }
     }
 
+    // DESPACHO CON SPINNER Y TOAST
     document.getElementById('form-despacho').addEventListener('submit', async function(e) {
         e.preventDefault(); 
-        const datos = {
-            tipo_movimiento: "Salida", id_obra: parseInt(document.getElementById('obraId').value),
-            id_producto: document.getElementById('prodId').value, cantidad: parseInt(document.getElementById('cantId').value)
-        };
-        const res = await fetch('https://sistema-encofrados.onrender.com/despachos/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) });
-        if (res.ok) { 
-            alert("✅ Material despachado con éxito."); 
-            cargarInventario(); 
-            cargarKardex();
-        } else { alert("❌ Error en el despacho."); }
+        const btn = this.querySelector('button[type="submit"]');
+        const textoOriginal = btn.innerHTML;
+        
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Procesando...`;
+
+        try {
+            const datos = {
+                tipo_movimiento: "Salida", 
+                id_obra: parseInt(document.getElementById('obraId').value),
+                id_producto: document.getElementById('prodId').value, 
+                cantidad: parseInt(document.getElementById('cantId').value)
+            };
+            const res = await fetch('https://sistema-encofrados.onrender.com/despachos/', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(datos) 
+            });
+            
+            if (res.ok) { 
+                mostrarToast("✅ Material despachado y registrado con éxito.", "success");
+                cargarInventario(); 
+                cargarKardex();
+                document.getElementById('cantId').value = '';
+            } else { 
+                const errorData = await res.json();
+                mostrarToast("❌ " + (errorData.detail || "Error en el despacho."), "danger");
+            }
+        } catch (error) {
+            mostrarToast("❌ Error de conexión con el servidor.", "danger");
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = textoOriginal;
+        }
     });
 
+    // DEVOLUCIÓN CON SPINNER Y TOAST
     document.getElementById('form-devolucion').addEventListener('submit', async function(e) {
         e.preventDefault(); 
-        const datos = {
-            id_obra: parseInt(document.getElementById('devObraId').value), id_producto: document.getElementById('devProdId').value,
-            cantidad_buena: parseInt(document.getElementById('devBuena').value), cantidad_mantenimiento: parseInt(document.getElementById('devMant').value),
-            cantidad_perdida: parseInt(document.getElementById('devPerdida').value)
-        };
-        const res = await fetch('https://sistema-encofrados.onrender.com/devoluciones/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) });
-        if (res.ok) { 
-            alert("✅ Devolución procesada correctamente."); 
-            cargarInventario(); 
-            cargarKardex();
-        } else { alert("❌ Error en la devolución."); }
+        const btn = this.querySelector('button[type="submit"]');
+        const textoOriginal = btn.innerHTML;
+        
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Procesando...`;
+
+        try {
+            const datos = {
+                id_obra: parseInt(document.getElementById('devObraId').value), 
+                id_producto: document.getElementById('devProdId').value,
+                cantidad_buena: parseInt(document.getElementById('devBuena').value), 
+                cantidad_mantenimiento: parseInt(document.getElementById('devMant').value),
+                cantidad_perdida: parseInt(document.getElementById('devPerdida').value)
+            };
+            const res = await fetch('https://sistema-encofrados.onrender.com/devoluciones/', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(datos) 
+            });
+            
+            if (res.ok) { 
+                mostrarToast("✅ Devolución procesada correctamente.", "success");
+                cargarInventario(); 
+                cargarKardex();
+            } else { 
+                const errorData = await res.json();
+                mostrarToast("❌ " + (errorData.detail || "Error en la devolución."), "danger");
+            }
+        } catch (error) {
+            mostrarToast("❌ Error de conexión con el servidor.", "danger");
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = textoOriginal;
+        }
     });
 
     document.getElementById('form-liquidacion').addEventListener('submit', async function(e) {
@@ -458,8 +536,13 @@
                             </tr>`;
                     });
                 }
-            } else { alert("❌ Error al liquidar la obra."); }
-        } catch (error) { alert("Error de conexión con el servidor."); }
+                mostrarToast("✅ Liquidación generada con éxito.", "success");
+            } else { 
+                mostrarToast("❌ Error al liquidar la obra.", "danger"); 
+            }
+        } catch (error) { 
+            mostrarToast("❌ Error de conexión con el servidor.", "danger"); 
+        }
     });
 
     document.getElementById('btnDescargarPdf').addEventListener('click', function() {
@@ -474,6 +557,7 @@
             jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
         };
         html2pdf().set(opciones).from(elemento).save();
+        mostrarToast("📄 PDF descargado correctamente.", "success");
     });
 </script>
 </body>
