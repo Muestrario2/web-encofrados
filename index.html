@@ -502,8 +502,13 @@
             
             if (res.ok) { 
                 mostrarToast("✅ Devolución procesada correctamente.", "success");
-                cargarInventario(); 
-                cargarKardex();
+                
+                // Esperamos 500ms y actualizamos el inventario y el kardex automáticamente
+                setTimeout(() => {
+                    cargarInventario(); 
+                    cargarKardex();
+                }, 500);
+
             } else { 
                 const errorData = await res.json();
                 mostrarToast("❌ " + (errorData.detail || "Error en la devolución."), "danger");
