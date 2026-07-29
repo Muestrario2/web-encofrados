@@ -3,67 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enterprise | Sistema de Control de Encofrados</title>
+    <title>Enterprise Analytics | Sistema de Control de Encofrados</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Google Fonts: Inter (Tipografía corporativa moderna) -->
+    <!-- Google Fonts: Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Html2Pdf y Chart.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
-            color: #334155;
-        }
-        .navbar-enterprise {
-            background-color: #0f172a;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-        .card {
-            border: none;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .card:hover {
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; color: #1e293b; }
+        .navbar-enterprise { background-color: #0f172a; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .card { border: none; border-radius: 12px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); transition: all 0.2s ease; background: #ffffff; }
+        .card:hover { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); }
+        .kpi-card { border-left: 4px solid #2563eb; }
+        .kpi-card.success { border-left-color: #10b981; }
+        .kpi-card.warning { border-left-color: #f59e0b; }
+        .kpi-card.danger { border-left-color: #ef4444; }
         .btn-primary { background-color: #2563eb; border-color: #2563eb; }
-        .btn-primary:hover { background-color: #1d4ed8; border-color: #1d4ed8; }
-        .table th { font-weight: 600; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; }
-        .form-control, .form-select { border-radius: 8px; border: 1px solid #cbd5e1; padding: 0.65rem 1rem; }
+        .btn-primary:hover { background-color: #1d4ed8; }
+        .table th { font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; background-color: #f8fafc; color: #475569; }
+        .form-control { border-radius: 8px; border: 1px solid #cbd5e1; padding: 0.6rem 0.9rem; font-size: 0.925rem; }
         .form-control:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
     </style>
 </head>
 <body>
 
-<!-- PANTALLA DE LOGIN PROFESIONAL -->
+<!-- PANTALLA DE LOGIN -->
 <div id="login-screen" class="d-flex align-items-center justify-content-center vh-100" style="position: fixed; top: 0; left: 0; width: 100%; z-index: 2000; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
-    <div class="card p-5 shadow-lg" style="width: 400px; border-radius: 16px; background-color: #ffffff;">
+    <div class="card p-5 shadow-lg" style="width: 400px; border-radius: 16px;">
         <div class="text-center mb-4">
             <div style="font-size: 3.5rem; margin-bottom: 10px;">🏗️</div>
             <h3 class="fw-bold text-dark m-0">InmoFormwork</h3>
-            <p class="text-muted small mt-1">Sistema de Gestión de Equipos y Operaciones</p>
+            <p class="text-muted small mt-1">Enterprise Analytics & Operations</p>
         </div>
         <div class="mb-3">
             <label class="form-label fw-semibold text-secondary small">CONTRASEÑA DE ACCESO</label>
             <input type="password" id="passInput" class="form-control form-control-lg" placeholder="••••••••">
         </div>
-        <button onclick="verificarPassword()" class="btn btn-primary w-100 btn-lg fw-semibold py-2">Iniciar Sesión</button>
+        <button onclick="verificarPassword()" class="btn btn-primary w-100 btn-lg fw-semibold py-2">Acceder al Sistema</button>
         <p id="error-msg" class="text-danger text-center small mt-3 fw-semibold" style="display:none;">❌ Contraseña incorrecta</p>
     </div>
 </div>
 
-<!-- BARRA DE NAVEGACIÓN SUPERIOR (CORPORATIVA) -->
+<!-- BARRA SUPERIOR -->
 <nav id="navbar-screen" class="navbar navbar-expand-lg navbar-dark navbar-enterprise px-4 py-3 mb-4" style="display: none;">
     <div class="container-fluid">
         <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="#">
-            <span>🏗️</span> InmoFormwork <span class="badge bg-primary fs-6 fw-normal ms-2">Enterprise v2.0</span>
+            <span>🏗️</span> InmoFormwork <span class="badge bg-primary fs-6 fw-normal ms-2">Enterprise Analytics</span>
         </a>
         <div class="d-flex align-items-center gap-3">
-            <span class="text-light small d-none d-md-inline">🟢 Servidor Conectado</span>
+            <span class="text-light small d-none d-md-inline">🟢 Servidor Activo (Cloud)</span>
             <button onclick="cerrarSesion()" class="btn btn-outline-light btn-sm fw-semibold px-3">Cerrar Sesión</button>
         </div>
     </div>
@@ -72,23 +62,55 @@
 <!-- DASHBOARD PRINCIPAL -->
 <div class="container pb-5" id="dashboard-screen" style="display: none; opacity: 0; transition: opacity 0.4s ease-in-out;">
     
-    <div class="row mb-4">
-        <div class="col-12">
-            <h4 class="fw-bold text-dark m-0">Panel de Control General</h4>
-            <p class="text-muted small">Monitoreo en tiempo real de almacén, obras activas y liquidaciones.</p>
+    <!-- BLOQUE DE TARJETAS KPI (NUEVO NIVEL GERENCIAL) -->
+    <div class="row g-3 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="card p-3 kpi-card success">
+                <div class="text-muted small fw-bold text-uppercase">Stock en Almacén</div>
+                <div class="d-flex align-items-baseline justify-content-between mt-2">
+                    <h3 class="fw-bold text-success mb-0" id="kpi-almacen">0</h3>
+                    <span class="badge bg-success bg-opacity-10 text-success small">Disponibles</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card p-3 kpi-card">
+                <div class="text-muted small fw-bold text-uppercase">Equipos en Obra</div>
+                <div class="d-flex align-items-baseline justify-content-between mt-2">
+                    <h3 class="fw-bold text-primary mb-0" id="kpi-obra">0</h3>
+                    <span class="badge bg-primary bg-opacity-10 text-primary small">Alquilados</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card p-3 kpi-card warning">
+                <div class="text-muted small fw-bold text-uppercase">En Mantenimiento</div>
+                <div class="d-flex align-items-baseline justify-content-between mt-2">
+                    <h3 class="fw-bold text-warning mb-0" id="kpi-mant">0</h3>
+                    <span class="badge bg-warning bg-opacity-10 text-warning small">Reparación</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card p-3 kpi-card danger">
+                <div class="text-muted small fw-bold text-uppercase">Tasa de Utilización</div>
+                <div class="d-flex align-items-baseline justify-content-between mt-2">
+                    <h3 class="fw-bold text-danger mb-0" id="kpi-util">0%</h3>
+                    <span class="badge bg-danger bg-opacity-10 text-danger small">Flota Activa</span>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- SECCIÓN SUPERIOR: TABLA Y GRÁFICO -->
+    <!-- SECCIÓN: TABLA Y GRÁFICO PRINCIPAL -->
     <div class="row g-4 mb-4">
-        <!-- TABLA DE INVENTARIO -->
         <div class="col-lg-8">
             <div class="card h-100 p-3">
                 <div class="card-body">
-                    <h5 class="card-title fw-bold text-dark mb-3">Disponibilidad de Equipos</h5>
+                    <h5 class="card-title fw-bold text-dark mb-3">Inventario Físico Actual</h5>
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mt-2">
-                            <thead class="table-dark rounded">
+                            <thead>
                                 <tr>
                                     <th class="py-3 ps-3">ID Producto</th>
                                     <th class="py-3 text-success">Almacén</th>
@@ -103,11 +125,10 @@
             </div>
         </div>
 
-        <!-- GRÁFICO VISUAL -->
         <div class="col-lg-4">
             <div class="card h-100 p-3">
                 <div class="card-body d-flex flex-column align-items-center justify-content-center">
-                    <h5 class="card-title fw-bold text-dark mb-3 w-100 text-start">Distribución Global</h5>
+                    <h5 class="card-title fw-bold text-dark mb-3 w-100 text-start">Distribución de Flota</h5>
                     <div style="position: relative; height: 210px; width: 100%;">
                         <canvas id="graficoInventario"></canvas>
                     </div>
@@ -116,9 +137,8 @@
         </div>
     </div>
 
-    <!-- SECCIÓN DE OPERACIONES (SALIDAS Y DEVOLUCIONES) -->
+    <!-- OPERACIONES: SALIDAS Y DEVOLUCIONES -->
     <div class="row g-4 mb-4">
-        <!-- REGISTRAR SALIDA -->
         <div class="col-lg-6">
             <div class="card h-100 p-3 border-top border-primary border-4">
                 <div class="card-body">
@@ -144,7 +164,6 @@
             </div>
         </div>
 
-        <!-- REGISTRAR DEVOLUCIÓN -->
         <div class="col-lg-6">
             <div class="card h-100 p-3 border-top border-warning border-4">
                 <div class="card-body">
@@ -179,7 +198,7 @@
         </div>
     </div>
 
-    <!-- SECCIÓN DE LIQUIDACIÓN Y FACTURACIÓN -->
+    <!-- LIQUIDACIÓN Y FACTURACIÓN -->
     <div class="row">
         <div class="col-12">
             <div class="card p-4 border-top border-danger border-4">
@@ -250,13 +269,10 @@
         if(pass === "163000") { 
             const loginScreen = document.getElementById('login-screen');
             loginScreen.style.cssText = 'display: none !important;';
-            
             document.getElementById('navbar-screen').style.display = 'block';
-            
             const dashboard = document.getElementById('dashboard-screen');
             dashboard.style.display = 'block';
             setTimeout(() => { dashboard.style.opacity = '1'; }, 50);
-            
             cargarInventario(); 
         } else {
             document.getElementById('error-msg').style.display = 'block';
@@ -316,6 +332,16 @@
                 totalObra += item.cantidad_en_obra;
                 totalMant += item.cantidad_mantenimiento;
             });
+
+            // CÁLCULO DE KPIS DINÁMICOS
+            document.getElementById('kpi-almacen').innerText = totalAlmacen;
+            document.getElementById('kpi-obra').innerText = totalObra;
+            document.getElementById('kpi-mant').innerText = totalMant;
+
+            const totalGeneral = totalAlmacen + totalObra + totalMant;
+            const tasaUtil = totalGeneral > 0 ? ((totalObra / totalGeneral) * 100).toFixed(1) : 0;
+            document.getElementById('kpi-util').innerText = tasaUtil + "%";
+
             actualizarGrafico(totalAlmacen, totalObra, totalMant);
         } catch (error) { console.error(error); }
     }
