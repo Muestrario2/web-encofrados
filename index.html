@@ -434,6 +434,7 @@
     }
 
     // DESPACHO CON SPINNER Y TOAST
+    // DESPACHO ACTUALIZADO
     document.getElementById('form-despacho').addEventListener('submit', async function(e) {
         e.preventDefault(); 
         const btn = this.querySelector('button[type="submit"]');
@@ -459,15 +460,53 @@
                 mostrarToast("✅ Material despachado y registrado con éxito.", "success");
                 document.getElementById('cantId').value = '';
                 
-                // Esperamos 500ms para asegurar que la base de datos en la nube guarde y refrescamos en vivo
-                setTimeout(() => {
-                    cargarInventario(); 
-                    cargarKardex();
-                }, 500);
-
+                // Forzamos la recarga inmediata de inventario y kardex
+                await cargarInventario();
+                await cargarKardex();
             } else { 
                 const errorData = await res.json();
                 mostrarToast("❌ " + (errorData.detail || "Error en el despacho."), "danger");
+            }
+        } catch (error) {
+            mostrarToast("❌ Error de conexión con el servidor.", "danger");
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = textoOriginal;
+        }
+    });
+
+    // DEVOLUCIÓN ACTUALIZADA
+    document.getElementById('form-devolucion').addEventListener('submit', async function(e) {
+        e.preventDefault(); 
+        const btn = this.querySelector('button[type="submit"]');
+        const textoOriginal = btn.innerHTML;
+        
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Procesando...`;
+
+        try {
+            const datos = {
+                id_obra: parseInt(document.getElementById('devObraId').value), 
+                id_producto: document.getElementById('devProdId').value,
+                cantidad_buena: parseInt(document.getElementById('devBuena').value), 
+                cantidad_mantenimiento: parseInt(document.getElementById('devMant').value),
+                cantidad_perdida: parseInt(document.getElementById('devPerdida').value)
+            };
+            const res = await fetch('https://sistema-encofrados.onrender.com/devoluciones/', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(datos) 
+            });
+            
+            if (res.ok) { 
+                mostrarToast("✅ Devolución procesada correctamente.", "success");
+                
+                // Forzamos la recarga inmediata de inventario y kardex
+                await cargarInventario();
+                await cargarKardex();
+            } else { 
+                const errorData = await res.json();
+                mostrarToast("❌ " + (errorData.detail || "Error en la devolución."), "danger");
             }
         } catch (error) {
             mostrarToast("❌ Error de conexión con el servidor.", "danger");
