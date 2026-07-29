@@ -3,168 +3,240 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Encofrados</title>
+    <title>Enterprise | Sistema de Control de Encofrados</title>
+    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts: Inter (Tipografía corporativa moderna) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Html2Pdf y Chart.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+        }
+        .navbar-enterprise {
+            background-color: #0f172a;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+        }
+        .btn-primary { background-color: #2563eb; border-color: #2563eb; }
+        .btn-primary:hover { background-color: #1d4ed8; border-color: #1d4ed8; }
+        .table th { font-weight: 600; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .form-control, .form-select { border-radius: 8px; border: 1px solid #cbd5e1; padding: 0.65rem 1rem; }
+        .form-control:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
+    </style>
 </head>
-<body class="bg-light">
+<body>
 
-<!-- PANTALLA DE LOGIN (Visible por defecto) -->
-<div id="login-screen" class="d-flex align-items-center justify-content-center vh-100 bg-dark" style="position: absolute; top: 0; left: 0; width: 100%; z-index: 1000;">
-    <div class="card p-4 shadow-lg" style="width: 350px; border-radius: 15px;">
-        <div class="text-center mb-3">
-            <h1 style="font-size: 3rem;">📦</h1>
+<!-- PANTALLA DE LOGIN PROFESIONAL -->
+<div id="login-screen" class="d-flex align-items-center justify-content-center vh-100" style="position: fixed; top: 0; left: 0; width: 100%; z-index: 2000; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+    <div class="card p-5 shadow-lg" style="width: 400px; border-radius: 16px; background-color: #ffffff;">
+        <div class="text-center mb-4">
+            <div style="font-size: 3.5rem; margin-bottom: 10px;">🏗️</div>
+            <h3 class="fw-bold text-dark m-0">InmoFormwork</h3>
+            <p class="text-muted small mt-1">Sistema de Gestión de Equipos y Operaciones</p>
         </div>
-        <h4 class="text-center mb-4 text-primary fw-bold">Acceso Restringido</h4>
         <div class="mb-3">
-            <label class="form-label text-secondary fw-bold">Contraseña de Administrador</label>
+            <label class="form-label fw-semibold text-secondary small">CONTRASEÑA DE ACCESO</label>
             <input type="password" id="passInput" class="form-control form-control-lg" placeholder="••••••••">
         </div>
-        <button onclick="verificarPassword()" class="btn btn-primary w-100 btn-lg fw-bold">Ingresar al Sistema</button>
-        <p id="error-msg" class="text-danger text-center mt-3 fw-bold" style="display:none;">❌ Contraseña incorrecta</p>
+        <button onclick="verificarPassword()" class="btn btn-primary w-100 btn-lg fw-semibold py-2">Iniciar Sesión</button>
+        <p id="error-msg" class="text-danger text-center small mt-3 fw-semibold" style="display:none;">❌ Contraseña incorrecta</p>
     </div>
 </div>
 
-<!-- DASHBOARD (Oculto por defecto) -->
-<div class="container mt-5 mb-5" id="dashboard-screen" style="display: none; opacity: 0; transition: opacity 0.5s;">
-    <h2 class="mb-4 text-primary">📦 Dashboard de Inventario y Operaciones</h2>
+<!-- BARRA DE NAVEGACIÓN SUPERIOR (CORPORATIVA) -->
+<nav id="navbar-screen" class="navbar navbar-expand-lg navbar-dark navbar-enterprise px-4 py-3 mb-4" style="display: none;">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="#">
+            <span>🏗️</span> InmoFormwork <span class="badge bg-primary fs-6 fw-normal ms-2">Enterprise v2.0</span>
+        </a>
+        <div class="d-flex align-items-center gap-3">
+            <span class="text-light small d-none d-md-inline">🟢 Servidor Conectado</span>
+            <button onclick="cerrarSesion()" class="btn btn-outline-light btn-sm fw-semibold px-3">Cerrar Sesión</button>
+        </div>
+    </div>
+</nav>
+
+<!-- DASHBOARD PRINCIPAL -->
+<div class="container pb-5" id="dashboard-screen" style="display: none; opacity: 0; transition: opacity 0.4s ease-in-out;">
     
     <div class="row mb-4">
-        <div class="col-md-8">
-            <div class="card shadow-sm h-100">
+        <div class="col-12">
+            <h4 class="fw-bold text-dark m-0">Panel de Control General</h4>
+            <p class="text-muted small">Monitoreo en tiempo real de almacén, obras activas y liquidaciones.</p>
+        </div>
+    </div>
+
+    <!-- SECCIÓN SUPERIOR: TABLA Y GRÁFICO -->
+    <div class="row g-4 mb-4">
+        <!-- TABLA DE INVENTARIO -->
+        <div class="col-lg-8">
+            <div class="card h-100 p-3">
                 <div class="card-body">
-                    <h5 class="card-title">Disponibilidad de Equipos (Tiempo Real)</h5>
-                    <table class="table table-hover mt-3">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>ID Producto</th>
-                                <th>Almacén</th>
-                                <th>En Obra</th>
-                                <th>Mantenim.</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabla-inventario"></tbody>
-                    </table>
+                    <h5 class="card-title fw-bold text-dark mb-3">Disponibilidad de Equipos</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mt-2">
+                            <thead class="table-dark rounded">
+                                <tr>
+                                    <th class="py-3 ps-3">ID Producto</th>
+                                    <th class="py-3 text-success">Almacén</th>
+                                    <th class="py-3 text-primary">En Obra</th>
+                                    <th class="py-3 text-warning">Mantenimiento</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-inventario"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-4">
-            <div class="card shadow-sm h-100">
+        <!-- GRÁFICO VISUAL -->
+        <div class="col-lg-4">
+            <div class="card h-100 p-3">
                 <div class="card-body d-flex flex-column align-items-center justify-content-center">
-                    <h5 class="card-title text-center text-secondary mb-3">Resumen Global</h5>
-                    <canvas id="graficoInventario" style="max-height: 220px;"></canvas>
+                    <h5 class="card-title fw-bold text-dark mb-3 w-100 text-start">Distribución Global</h5>
+                    <div style="position: relative; height: 210px; width: 100%;">
+                        <canvas id="graficoInventario"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-md-6 mb-4">
-            <div class="card shadow-sm border-primary h-100">
+    <!-- SECCIÓN DE OPERACIONES (SALIDAS Y DEVOLUCIONES) -->
+    <div class="row g-4 mb-4">
+        <!-- REGISTRAR SALIDA -->
+        <div class="col-lg-6">
+            <div class="card h-100 p-3 border-top border-primary border-4">
                 <div class="card-body">
-                    <h5 class="card-title text-primary">🚚 Registrar Salida</h5>
-                    <form id="form-despacho" class="row g-3 mt-2">
+                    <h5 class="card-title fw-bold text-primary mb-3">🚚 Registrar Salida a Obra</h5>
+                    <form id="form-despacho" class="row g-3 mt-1">
                         <div class="col-md-4">
-                            <label class="form-label fw-bold">ID Obra</label>
+                            <label class="form-label fw-semibold small text-muted">ID OBRA</label>
                             <input type="number" class="form-control" id="obraId" value="1" required>
                         </div>
                         <div class="col-md-8">
-                            <label class="form-label fw-bold">ID Producto</label>
+                            <label class="form-label fw-semibold small text-muted">ID PRODUCTO</label>
                             <input type="text" class="form-control" id="prodId" value="PANEL-FENOLICO-122X244" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Cantidad</label>
+                            <label class="form-label fw-semibold small text-muted">CANTIDAD</label>
                             <input type="number" class="form-control" id="cantId" placeholder="Ej: 100" required>
                         </div>
                         <div class="col-md-6 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary w-100 fw-bold">Despachar</button>
+                            <button type="submit" class="btn btn-primary w-100 fw-semibold py-2">Procesar Salida</button>
                         </div>
                     </form>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-6 mb-4">
-            <div class="card shadow-sm border-warning h-100">
+        <!-- REGISTRAR DEVOLUCIÓN -->
+        <div class="col-lg-6">
+            <div class="card h-100 p-3 border-top border-warning border-4">
                 <div class="card-body">
-                    <h5 class="card-title text-warning text-dark">🔙 Registrar Devolución</h5>
-                    <form id="form-devolucion" class="row g-3 mt-2">
+                    <h5 class="card-title fw-bold text-dark mb-3">🔙 Registrar Devolución</h5>
+                    <form id="form-devolucion" class="row g-3 mt-1">
                         <div class="col-md-4">
-                            <label class="form-label fw-bold">ID Obra</label>
+                            <label class="form-label fw-semibold small text-muted">ID OBRA</label>
                             <input type="number" class="form-control" id="devObraId" value="1" required>
                         </div>
                         <div class="col-md-8">
-                            <label class="form-label fw-bold">ID Producto</label>
+                            <label class="form-label fw-semibold small text-muted">ID PRODUCTO</label>
                             <input type="text" class="form-control" id="devProdId" value="PANEL-FENOLICO-122X244" required>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-bold text-success">Buen Estado</label>
+                            <label class="form-label fw-semibold small text-success">BUEN ESTADO</label>
                             <input type="number" class="form-control" id="devBuena" value="0" min="0" required>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-bold text-warning">Mantenim.</label>
+                            <label class="form-label fw-semibold small text-warning">MANTENIM.</label>
                             <input type="number" class="form-control" id="devMant" value="0" min="0" required>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-bold text-danger">Pérdida</label>
+                            <label class="form-label fw-semibold small text-danger">PÉRDIDA</label>
                             <input type="number" class="form-control" id="devPerdida" value="0" min="0" required>
                         </div>
-                        <div class="col-12 text-end mt-2">
-                            <button type="submit" class="btn btn-warning fw-bold w-100">Procesar Devolución</button>
+                        <div class="col-12 mt-3">
+                            <button type="submit" class="btn btn-warning w-100 fw-semibold text-dark py-2">Procesar Devolución</button>
                         </div>
                     </form>
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="col-md-12">
-            <div class="card shadow-sm border-danger">
+    <!-- SECCIÓN DE LIQUIDACIÓN Y FACTURACIÓN -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card p-4 border-top border-danger border-4">
                 <div class="card-body">
-                    <h5 class="card-title text-danger">💰 Liquidación de Obra</h5>
-                    <form id="form-liquidacion" class="row g-3 mt-2">
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold">ID Obra a liquidar</label>
+                    <h5 class="card-title fw-bold text-danger mb-3">💰 Liquidación de Obra y Penalidades</h5>
+                    <form id="form-liquidacion" class="row g-3 align-items-end mt-1">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small text-muted">ID OBRA A LIQUIDAR</label>
                             <input type="number" class="form-control" id="liqObraId" value="1" required>
                         </div>
-                        <div class="col-md-3 d-flex align-items-end">
-                            <button type="submit" class="btn btn-danger w-100 fw-bold">Generar Cobro</button>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-danger w-100 fw-semibold py-2">Generar Liquidación</button>
                         </div>
                     </form>
                     
                     <div id="resultado-liquidacion" class="mt-4" style="display: none;">
-                        <div id="ticket-pdf" style="background-color: #ffffff; padding: 40px; border: 1px solid #ddd; border-radius: 4px; font-family: Arial, sans-serif; color: #333;">
-                            <div style="text-align: center; border-bottom: 3px solid #dc3545; padding-bottom: 15px; margin-bottom: 25px;">
-                                <h2 style="color: #dc3545; font-weight: 900; margin: 0; text-transform: uppercase; letter-spacing: 1px;">LIQUIDACIÓN DE PENALIDADES</h2>
-                                <p style="margin: 5px 0 0; color: #666; font-size: 15px;">Sistema de Control de Encofrados y Equipos</p>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 30px; font-size: 15px;">
+                        <div id="ticket-pdf" style="background-color: #ffffff; padding: 40px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: 'Inter', sans-serif; color: #1e293b;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ef4444; padding-bottom: 20px; margin-bottom: 25px;">
                                 <div>
-                                    <p style="margin: 0 0 5px 0;"><strong>Código de Obra:</strong> <span id="pdf-obra-id"></span></p>
+                                    <h2 style="color: #ef4444; font-weight: 800; margin: 0; font-size: 22px; text-transform: uppercase;">InmoFormwork S.A.C.</h2>
+                                    <p style="margin: 4px 0 0; color: #64748b; font-size: 13px;">Control de Equipos y Encofrados para la Construcción</p>
+                                </div>
+                                <div style="text-align: right;">
+                                    <h4 style="margin: 0; color: #0f172a; font-size: 16px; font-weight: 700;">LIQUIDACIÓN DE COBRO</h4>
+                                    <p style="margin: 2px 0 0; color: #64748b; font-size: 13px;">Documento N°: LQ-001</p>
+                                </div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 25px; font-size: 14px; background-color: #f8fafc; padding: 15px; border-radius: 6px;">
+                                <div>
+                                    <p style="margin: 0 0 4px 0;"><strong>Código de Obra:</strong> <span id="pdf-obra-id"></span></p>
                                     <p style="margin: 0;"><strong>Cliente:</strong> Contratista Principal</p>
                                 </div>
                                 <div style="text-align: right;">
-                                    <p style="margin: 0 0 5px 0;"><strong>Fecha de Emisión:</strong> <span id="pdf-fecha"></span></p>
-                                    <p style="margin: 0;"><strong>Documento N°:</strong> LQ-001</p>
+                                    <p style="margin: 0 0 4px 0;"><strong>Fecha de Emisión:</strong> <span id="pdf-fecha"></span></p>
+                                    <p style="margin: 0;"><strong>Moneda:</strong> Soles (PEN)</p>
                                 </div>
                             </div>
-                            <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 15px;">
+                            <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 14px;">
                                 <thead>
-                                    <tr style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">
-                                        <th style="padding: 12px; text-align: center; width: 10%;">Cant.</th>
-                                        <th style="padding: 12px; text-align: left; width: 50%;">Descripción del Equipo</th>
-                                        <th style="padding: 12px; text-align: right; width: 20%;">Costo Unit.</th>
-                                        <th style="padding: 12px; text-align: right; width: 20%;">Subtotal</th>
+                                    <tr style="background-color: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                                        <th style="padding: 10px; text-align: center; width: 10%; color: #475569;">Cant.</th>
+                                        <th style="padding: 10px; text-align: left; width: 50%; color: #475569;">Descripción del Equipo</th>
+                                        <th style="padding: 10px; text-align: right; width: 20%; color: #475569;">Costo Unit.</th>
+                                        <th style="padding: 10px; text-align: right; width: 20%; color: #475569;">Subtotal</th>
                                     </tr>
                                 </thead>
                                 <tbody id="liqDetallesTabla"></tbody>
                             </table>
-                            <div style="text-align: right; border-top: 3px solid #dc3545; padding-top: 20px;">
-                                <h3 style="margin: 0; color: #dc3545; font-weight: bold;">TOTAL A FACTURAR: S/ <span id="liqTotal">0.00</span></h3>
+                            <div style="text-align: right; border-top: 2px solid #ef4444; padding-top: 15px;">
+                                <h3 style="margin: 0; color: #0f172a; font-size: 18px; font-weight: 700;">TOTAL A FACTURAR: <span style="color: #ef4444;">S/ <span id="liqTotal">0.00</span></span></h3>
+                            </div>
+                            <div style="margin-top: 40px; text-align: center; color: #94a3b8; font-size: 11px; border-top: 1px solid #f1f5f9; padding-top: 15px;">
+                                Este documento detalla los equipos no devueltos o destruidos en obra según inventario físico verificado.<br>
+                                Sistema automatizado de gestión de encofrados.
                             </div>
                         </div>
-                        <button id="btnDescargarPdf" class="btn btn-dark w-100 fw-bold mt-3 py-2">📄 Descargar Liquidación en PDF (A4)</button>
+                        <button id="btnDescargarPdf" class="btn btn-dark w-100 fw-semibold mt-3 py-2">📄 Descargar Liquidación Oficial en PDF</button>
                     </div>
                 </div>
             </div>
@@ -173,33 +245,36 @@
 </div>
 
 <script>
-    // --- LÓGICA DE SEGURIDAD (LOGIN) ---
     function verificarPassword() {
         const pass = document.getElementById('passInput').value.trim();
-        
         if(pass === "163000") { 
-            
-            // FUERZA BRUTA PARA OCULTAR EL LOGIN:
             const loginScreen = document.getElementById('login-screen');
             loginScreen.style.cssText = 'display: none !important;';
             
-            // Mostramos el dashboard
+            document.getElementById('navbar-screen').style.display = 'block';
+            
             const dashboard = document.getElementById('dashboard-screen');
             dashboard.style.display = 'block';
             setTimeout(() => { dashboard.style.opacity = '1'; }, 50);
             
             cargarInventario(); 
-            
         } else {
             document.getElementById('error-msg').style.display = 'block';
         }
     }
 
-    // Permite presionar "Enter" en lugar de hacer clic en el botón
+    function cerrarSesion() {
+        document.getElementById('passInput').value = '';
+        document.getElementById('error-msg').style.display = 'none';
+        document.getElementById('dashboard-screen').style.display = 'none';
+        document.getElementById('dashboard-screen').style.opacity = '0';
+        document.getElementById('navbar-screen').style.display = 'none';
+        document.getElementById('login-screen').style.display = 'flex';
+    }
+
     document.getElementById('passInput').addEventListener('keypress', function (e) {
         if (e.key === 'Enter') { verificarPassword(); }
     });
-    // -----------------------------------
 
     let miGrafico = null;
 
@@ -212,7 +287,7 @@
                 labels: ['En Almacén', 'En Obra', 'Mantenimiento'],
                 datasets: [{
                     data: [almacen, obra, mant],
-                    backgroundColor: ['#198754', '#0d6efd', '#ffc107'],
+                    backgroundColor: ['#10b981', '#2563eb', '#f59e0b'],
                     borderWidth: 2, borderColor: '#ffffff'
                 }]
             },
@@ -232,7 +307,7 @@
             datos.forEach(item => {
                 tabla.innerHTML += `
                     <tr>
-                        <td><strong>${item.id_producto}</strong></td>
+                        <td class="ps-3 fw-semibold text-dark">${item.id_producto}</td>
                         <td class="text-success fw-bold">${item.cantidad_almacen}</td>
                         <td class="text-primary fw-bold">${item.cantidad_en_obra}</td>
                         <td class="text-warning fw-bold">${item.cantidad_mantenimiento}</td>
@@ -252,7 +327,7 @@
             id_producto: document.getElementById('prodId').value, cantidad: parseInt(document.getElementById('cantId').value)
         };
         const res = await fetch('https://sistema-encofrados.onrender.com/despachos/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) });
-        if (res.ok) { alert("✅ Material despachado."); cargarInventario(); } else { alert("❌ Error."); }
+        if (res.ok) { alert("✅ Material despachado con éxito."); cargarInventario(); } else { alert("❌ Error en el despacho."); }
     });
 
     document.getElementById('form-devolucion').addEventListener('submit', async function(e) {
@@ -263,7 +338,7 @@
             cantidad_perdida: parseInt(document.getElementById('devPerdida').value)
         };
         const res = await fetch('https://sistema-encofrados.onrender.com/devoluciones/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) });
-        if (res.ok) { alert("✅ Devolución procesada."); cargarInventario(); } else { alert("❌ Error."); }
+        if (res.ok) { alert("✅ Devolución procesada correctamente."); cargarInventario(); } else { alert("❌ Error en la devolución."); }
     });
 
     document.getElementById('form-liquidacion').addEventListener('submit', async function(e) {
@@ -281,20 +356,20 @@
                 const tablaBody = document.getElementById('liqDetallesTabla');
                 tablaBody.innerHTML = '';
                 if(datos.desglose_perdidas.length === 0) {
-                    tablaBody.innerHTML = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #666;">No hay penalidades registradas. Devolución al 100%.</td></tr>';
+                    tablaBody.innerHTML = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #64748b;">No hay penalidades registradas. Devolución al 100%.</td></tr>';
                 } else {
                     datos.desglose_perdidas.forEach(item => {
                         tablaBody.innerHTML += `
-                            <tr style="border-bottom: 1px solid #eee;">
-                                <td style="padding: 12px; text-align: center; font-weight: bold;">${item.cantidad_perdida}</td>
-                                <td style="padding: 12px;">${item.producto}</td>
-                                <td style="padding: 12px; text-align: right;">S/ ${item.costo_unitario.toFixed(2)}</td>
-                                <td style="padding: 12px; text-align: right; font-weight: bold;">S/ ${item.subtotal_cobro.toFixed(2)}</td>
+                            <tr style="border-bottom: 1px solid #f1f5f9;">
+                                <td style="padding: 12px; text-align: center; font-weight: bold; color: #0f172a;">${item.cantidad_perdida}</td>
+                                <td style="padding: 12px; color: #334155;">${item.producto}</td>
+                                <td style="padding: 12px; text-align: right; color: #334155;">S/ ${item.costo_unitario.toFixed(2)}</td>
+                                <td style="padding: 12px; text-align: right; font-weight: bold; color: #0f172a;">S/ ${item.subtotal_cobro.toFixed(2)}</td>
                             </tr>`;
                     });
                 }
             } else { alert("❌ Error al liquidar la obra."); }
-        } catch (error) { alert("Error de conexión."); }
+        } catch (error) { alert("Error de conexión con el servidor."); }
     });
 
     document.getElementById('btnDescargarPdf').addEventListener('click', function() {
