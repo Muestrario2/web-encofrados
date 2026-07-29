@@ -175,25 +175,19 @@
 <script>
     // --- LÓGICA DE SEGURIDAD (LOGIN) ---
     function verificarPassword() {
-        const pass = document.getElementById('passInput').value;
+        // .trim() borra cualquier espacio en blanco invisible al inicio o final
+        const pass = document.getElementById('passInput').value.trim();
         
-        // AQUÍ ESTÁ TU CONTRASEÑA, CÁMBIALA SI QUIERES:
+        // ESTO ES UN CHIVATO: Imprimirá en la consola lo que escribiste
+        console.log("Contraseña escrita:", pass);
+        
         if(pass === "163000") { 
-            
-            // Si la clave es correcta, ocultamos el login y mostramos el dashboard
             document.getElementById('login-screen').style.display = 'none';
-            
             const dashboard = document.getElementById('dashboard-screen');
             dashboard.style.display = 'block';
-            
-            // Pequeña animación para que aparezca suave
             setTimeout(() => { dashboard.style.opacity = '1'; }, 50);
-            
-            // RECIÉN AHORA conectamos con la base de datos
             cargarInventario(); 
-            
         } else {
-            // Si es incorrecta, mostramos error
             document.getElementById('error-msg').style.display = 'block';
         }
     }
