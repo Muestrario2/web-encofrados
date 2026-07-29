@@ -368,7 +368,8 @@
 
     async function cargarInventario() {
         try {
-            const respuesta = await fetch('https://sistema-encofrados.onrender.com/dashboard/inventario/');
+            // Añadimos ?t=Date.now() para evitar la caché del navegador
+            const respuesta = await fetch('https://sistema-encofrados.onrender.com/dashboard/inventario/?t=' + Date.now());
             const datos = await respuesta.json();
             const tabla = document.getElementById('tabla-inventario');
             tabla.innerHTML = ''; 
@@ -402,7 +403,8 @@
 
     async function cargarKardex() {
         try {
-            const respuesta = await fetch('https://sistema-encofrados.onrender.com/kardex/');
+            // Añadimos ?t=Date.now() para forzar datos frescos en tiempo real
+            const respuesta = await fetch('https://sistema-encofrados.onrender.com/kardex/?t=' + Date.now());
             const datos = await respuesta.json();
             const tablaKardex = document.getElementById('tabla-kardex');
             tablaKardex.innerHTML = '';
@@ -430,7 +432,7 @@
             document.getElementById('tabla-kardex').innerHTML = '<tr><td colspan="6" class="text-center text-danger py-3">Error al conectar con el Kardex.</td></tr>';
         }
     }
-
+    
     // DESPACHO CON SPINNER Y TOAST
     document.getElementById('form-despacho').addEventListener('submit', async function(e) {
         e.preventDefault(); 
