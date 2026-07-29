@@ -175,18 +175,21 @@
 <script>
     // --- LÓGICA DE SEGURIDAD (LOGIN) ---
     function verificarPassword() {
-        // .trim() borra cualquier espacio en blanco invisible al inicio o final
         const pass = document.getElementById('passInput').value.trim();
         
-        // ESTO ES UN CHIVATO: Imprimirá en la consola lo que escribiste
-        console.log("Contraseña escrita:", pass);
-        
         if(pass === "163000") { 
-            document.getElementById('login-screen').style.display = 'none';
+            
+            // FUERZA BRUTA PARA OCULTAR EL LOGIN:
+            const loginScreen = document.getElementById('login-screen');
+            loginScreen.style.cssText = 'display: none !important;';
+            
+            // Mostramos el dashboard
             const dashboard = document.getElementById('dashboard-screen');
             dashboard.style.display = 'block';
             setTimeout(() => { dashboard.style.opacity = '1'; }, 50);
+            
             cargarInventario(); 
+            
         } else {
             document.getElementById('error-msg').style.display = 'block';
         }
