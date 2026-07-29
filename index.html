@@ -3,20 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Sistema de Encofrados</title>
+    <title>Sistema de Encofrados</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <!-- LIBRERÍA DE GRÁFICOS (Chart.js) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-light">
 
-<div class="container mt-5 mb-5">
+<!-- PANTALLA DE LOGIN (Visible por defecto) -->
+<div id="login-screen" class="d-flex align-items-center justify-content-center vh-100 bg-dark" style="position: absolute; top: 0; left: 0; width: 100%; z-index: 1000;">
+    <div class="card p-4 shadow-lg" style="width: 350px; border-radius: 15px;">
+        <div class="text-center mb-3">
+            <h1 style="font-size: 3rem;">📦</h1>
+        </div>
+        <h4 class="text-center mb-4 text-primary fw-bold">Acceso Restringido</h4>
+        <div class="mb-3">
+            <label class="form-label text-secondary fw-bold">Contraseña de Administrador</label>
+            <input type="password" id="passInput" class="form-control form-control-lg" placeholder="••••••••">
+        </div>
+        <button onclick="verificarPassword()" class="btn btn-primary w-100 btn-lg fw-bold">Ingresar al Sistema</button>
+        <p id="error-msg" class="text-danger text-center mt-3 fw-bold" style="display:none;">❌ Contraseña incorrecta</p>
+    </div>
+</div>
+
+<!-- DASHBOARD (Oculto por defecto) -->
+<div class="container mt-5 mb-5" id="dashboard-screen" style="display: none; opacity: 0; transition: opacity 0.5s;">
     <h2 class="mb-4 text-primary">📦 Dashboard de Inventario y Operaciones</h2>
     
-    <!-- SECCIÓN SUPERIOR: TABLA Y GRÁFICO -->
     <div class="row mb-4">
-        <!-- TABLA DE INVENTARIO -->
         <div class="col-md-8">
             <div class="card shadow-sm h-100">
                 <div class="card-body">
@@ -30,20 +44,16 @@
                                 <th>Mantenim.</th>
                             </tr>
                         </thead>
-                        <tbody id="tabla-inventario">
-                            <!-- Datos inyectados -->
-                        </tbody>
+                        <tbody id="tabla-inventario"></tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <!-- GRÁFICO VISUAL -->
         <div class="col-md-4">
             <div class="card shadow-sm h-100">
                 <div class="card-body d-flex flex-column align-items-center justify-content-center">
                     <h5 class="card-title text-center text-secondary mb-3">Resumen Global</h5>
-                    <!-- Aquí se dibuja el gráfico -->
                     <canvas id="graficoInventario" style="max-height: 220px;"></canvas>
                 </div>
             </div>
@@ -51,7 +61,6 @@
     </div>
 
     <div class="row">
-        <!-- PANEL DE DESPACHOS -->
         <div class="col-md-6 mb-4">
             <div class="card shadow-sm border-primary h-100">
                 <div class="card-body">
@@ -77,7 +86,6 @@
             </div>
         </div>
 
-        <!-- PANEL DE DEVOLUCIONES -->
         <div class="col-md-6 mb-4">
             <div class="card shadow-sm border-warning h-100">
                 <div class="card-body">
@@ -111,11 +119,10 @@
             </div>
         </div>
 
-        <!-- PANEL DE LIQUIDACIÓN DE OBRA -->
         <div class="col-md-12">
             <div class="card shadow-sm border-danger">
                 <div class="card-body">
-                    <h5 class="card-title text-danger">💰 Liquidación de Obra (Penalidades por Pérdida)</h5>
+                    <h5 class="card-title text-danger">💰 Liquidación de Obra</h5>
                     <form id="form-liquidacion" class="row g-3 mt-2">
                         <div class="col-md-3">
                             <label class="form-label fw-bold">ID Obra a liquidar</label>
@@ -156,10 +163,6 @@
                             <div style="text-align: right; border-top: 3px solid #dc3545; padding-top: 20px;">
                                 <h3 style="margin: 0; color: #dc3545; font-weight: bold;">TOTAL A FACTURAR: S/ <span id="liqTotal">0.00</span></h3>
                             </div>
-                            <div style="margin-top: 50px; text-align: center; color: #888; font-size: 12px; border-top: 1px solid #eee; padding-top: 15px;">
-                                Este documento detalla los equipos no devueltos o destruidos en obra según el inventario físico.<br>
-                                Documento generado automáticamente por el sistema.
-                            </div>
                         </div>
                         <button id="btnDescargarPdf" class="btn btn-dark w-100 fw-bold mt-3 py-2">📄 Descargar Liquidación en PDF (A4)</button>
                     </div>
@@ -170,43 +173,56 @@
 </div>
 
 <script>
-    let miGrafico = null; // Variable para controlar el gráfico
+    // --- LÓGICA DE SEGURIDAD (LOGIN) ---
+    function verificarPassword() {
+        const pass = document.getElementById('passInput').value;
+        
+        // AQUÍ ESTÁ TU CONTRASEÑA, CÁMBIALA SI QUIERES:
+        if(pass === "Admin2026") { 
+            
+            // Si la clave es correcta, ocultamos el login y mostramos el dashboard
+            document.getElementById('login-screen').style.display = 'none';
+            
+            const dashboard = document.getElementById('dashboard-screen');
+            dashboard.style.display = 'block';
+            
+            // Pequeña animación para que aparezca suave
+            setTimeout(() => { dashboard.style.opacity = '1'; }, 50);
+            
+            // RECIÉN AHORA conectamos con la base de datos
+            cargarInventario(); 
+            
+        } else {
+            // Si es incorrecta, mostramos error
+            document.getElementById('error-msg').style.display = 'block';
+        }
+    }
 
-    // Función para crear/actualizar el gráfico
+    // Permite presionar "Enter" en lugar de hacer clic en el botón
+    document.getElementById('passInput').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') { verificarPassword(); }
+    });
+    // -----------------------------------
+
+    let miGrafico = null;
+
     function actualizarGrafico(almacen, obra, mant) {
         const ctx = document.getElementById('graficoInventario').getContext('2d');
-        
-        // Si ya hay un gráfico dibujado, bórralo antes de pintar el nuevo para que no se encimen
-        if (miGrafico) {
-            miGrafico.destroy();
-        }
-
+        if (miGrafico) { miGrafico.destroy(); }
         miGrafico = new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels: ['En Almacén', 'En Obra', 'Mantenimiento'],
                 datasets: [{
                     data: [almacen, obra, mant],
-                    backgroundColor: [
-                        '#198754', // Verde (Almacén)
-                        '#0d6efd', // Azul (Obra)
-                        '#ffc107'  // Amarillo (Mantenimiento)
-                    ],
-                    borderWidth: 2,
-                    borderColor: '#ffffff'
+                    backgroundColor: ['#198754', '#0d6efd', '#ffc107'],
+                    borderWidth: 2, borderColor: '#ffffff'
                 }]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'bottom' }
-                }
-            }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
         });
     }
 
-    // 1. Cargar la tabla y sumar para el gráfico
     async function cargarInventario() {
         try {
             const respuesta = await fetch('https://sistema-encofrados.onrender.com/dashboard/inventario/');
@@ -214,33 +230,24 @@
             const tabla = document.getElementById('tabla-inventario');
             tabla.innerHTML = ''; 
             
-            let totalAlmacen = 0;
-            let totalObra = 0;
-            let totalMant = 0;
+            let totalAlmacen = 0, totalObra = 0, totalMant = 0;
 
             datos.forEach(item => {
-                const fila = `
+                tabla.innerHTML += `
                     <tr>
                         <td><strong>${item.id_producto}</strong></td>
                         <td class="text-success fw-bold">${item.cantidad_almacen}</td>
                         <td class="text-primary fw-bold">${item.cantidad_en_obra}</td>
                         <td class="text-warning fw-bold">${item.cantidad_mantenimiento}</td>
                     </tr>`;
-                tabla.innerHTML += fila;
-                
-                // Sumamos los totales
                 totalAlmacen += item.cantidad_almacen;
                 totalObra += item.cantidad_en_obra;
                 totalMant += item.cantidad_mantenimiento;
             });
-
-            // Pintamos el gráfico con los nuevos totales
             actualizarGrafico(totalAlmacen, totalObra, totalMant);
-
         } catch (error) { console.error(error); }
     }
 
-    // 2. Despachos
     document.getElementById('form-despacho').addEventListener('submit', async function(e) {
         e.preventDefault(); 
         const datos = {
@@ -251,7 +258,6 @@
         if (res.ok) { alert("✅ Material despachado."); cargarInventario(); } else { alert("❌ Error."); }
     });
 
-    // 3. Devoluciones
     document.getElementById('form-devolucion').addEventListener('submit', async function(e) {
         e.preventDefault(); 
         const datos = {
@@ -263,7 +269,6 @@
         if (res.ok) { alert("✅ Devolución procesada."); cargarInventario(); } else { alert("❌ Error."); }
     });
 
-    // 4. Liquidación
     document.getElementById('form-liquidacion').addEventListener('submit', async function(e) {
         e.preventDefault();
         const idObra = document.getElementById('liqObraId').value;
@@ -295,7 +300,6 @@
         } catch (error) { alert("Error de conexión."); }
     });
 
-    // 5. Descargar PDF
     document.getElementById('btnDescargarPdf').addEventListener('click', function() {
         window.scrollTo(0, 0);
         window.getSelection().removeAllRanges();
@@ -309,8 +313,6 @@
         };
         html2pdf().set(opciones).from(elemento).save();
     });
-
-    cargarInventario();
 </script>
 </body>
 </html>
