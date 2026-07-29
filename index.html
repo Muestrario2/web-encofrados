@@ -432,7 +432,7 @@
             document.getElementById('tabla-kardex').innerHTML = '<tr><td colspan="6" class="text-center text-danger py-3">Error al conectar con el Kardex.</td></tr>';
         }
     }
-    
+
     // DESPACHO CON SPINNER Y TOAST
     document.getElementById('form-despacho').addEventListener('submit', async function(e) {
         e.preventDefault(); 
@@ -457,9 +457,14 @@
             
             if (res.ok) { 
                 mostrarToast("✅ Material despachado y registrado con éxito.", "success");
-                cargarInventario(); 
-                cargarKardex();
                 document.getElementById('cantId').value = '';
+                
+                // Esperamos 500ms para asegurar que la base de datos en la nube guarde y refrescamos en vivo
+                setTimeout(() => {
+                    cargarInventario(); 
+                    cargarKardex();
+                }, 500);
+
             } else { 
                 const errorData = await res.json();
                 mostrarToast("❌ " + (errorData.detail || "Error en el despacho."), "danger");
@@ -471,7 +476,7 @@
             btn.innerHTML = textoOriginal;
         }
     });
-
+    
     // DEVOLUCIÓN CON SPINNER Y TOAST
     document.getElementById('form-devolucion').addEventListener('submit', async function(e) {
         e.preventDefault(); 
