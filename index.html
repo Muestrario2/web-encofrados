@@ -255,7 +255,7 @@
         </div>
     </div>
 
-    <!-- LIQUIDACIÓN (OCULTO PARA ALMACENERO) -->
+    <!-- LIQUIDACIÓN -->
     <div class="row" id="seccion-liquidacion">
         <div class="col-12">
             <div class="card p-4 border-top border-danger border-4">
@@ -333,6 +333,17 @@
 </div>
 
 <script>
+    // --- FUNCIÓN CENTRAL PARA OBTENER EL TOKEN ---
+    // Esta función es vital: lee el "gafete" guardado al iniciar sesión
+    function obtenerHeaders() {
+        const token = sessionStorage.getItem('token');
+        if (token) {
+            return { 'Authorization': 'Bearer ' + token };
+        } else {
+            return {};
+        }
+    }
+
     // --- 1. SISTEMA DE LOGIN REAL CON ROLES ---
     document.getElementById('form-login').addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -354,23 +365,23 @@
             if (res.ok) {
                 const data = await res.json();
                 
-                // Guardamos el token en memoria
+                // Guardamos el token en la memoria del navegador
                 sessionStorage.setItem('token', data.access_token);
                 sessionStorage.setItem('rol', data.rol);
                 
                 document.getElementById('error-msg').style.display = 'none';
                 
-                // Aplicamos la lógica de Roles a la interfaz
+                // Configurar qué ve el usuario según su rol
                 configurarInterfazPorRol(data.rol);
                 
-                // Animación de entrada
+                // Transición visual
                 document.getElementById('login-screen').style.cssText = 'display: none !important;';
                 document.getElementById('navbar-screen').style.display = 'block';
                 const dashboard = document.getElementById('dashboard-screen');
                 dashboard.style.display = 'block';
                 setTimeout(() => { dashboard.style.opacity = '1'; }, 50);
                 
-                // Cargamos la data
+                // Cargar datos ahora sí con permisos
                 cargarInventario(); 
                 cargarKardex();
                 
@@ -378,7 +389,7 @@
                 document.getElementById('error-msg').style.display = 'block';
             }
         } catch (error) {
-            alert("Error conectando al servidor. Espera unos segundos a que Render termine de iniciar.");
+            alert("Error conectando al servidor.");
         } finally {
             btn.disabled = false;
             btn.innerHTML = 'Acceder al Sistema';
@@ -427,7 +438,9 @@
     let miGrafico = null;
     function actualizarGrafico(almacen, obra, mant) {
         const ctx = document.getElementById('graficoInventario').getContext('2d');
-        if (miGrafico) { miGrafico.destroy(); }
+        if (miGrafico) { 
+            miGrafico.destroy(); 
+        }
         miGrafico = new Chart(ctx, {
             type: 'doughnut',
             data: {
@@ -435,75 +448,28 @@
                 datasets: [{
                     data: [almacen, obra, mant],
                     backgroundColor: ['#10b981', '#2563eb', '#f59e0b'],
-                    borderWidth: 2, borderColor: '#ffffff'
+                    borderWidth: 2, 
+                    borderColor: '#ffffff'
                 }]
             },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
         });
     }
 
-    // --- EXPORTAR EXCEL ---
-    function exportarExcel() {
-        const tabla = document.getElementById('tabla-kardex');
-        if (tabla.innerText.includes('No hay movimientos') || tabla.innerText.includes('Cargando')) {
-            mostrarToast("❌ No hay datos para exportar.", "danger"); return;
-        }
-        const tablaCompleta = document.querySelector('.table-responsive table');
-        const workbook = XLSX.utils.table_to_book(tablaCompleta, { sheet: "Historial_Kardex" });
-        const fechaHoy = new Date().toLocaleDateString('es-PE').replace(/\//g, '-');
-        XLSX.writeFile(workbook, `Kardex_InmoFormwork_${fechaHoy}.xlsx`);
-        mostrarToast("📊 Archivo Excel generado con éxito.", "success");
-    }
-
-    // --- FILTROS AVANZADOS ---
-    function filtrarKardex() {
-        const texto = document.getElementById('filtroTexto').value.toLowerCase();
-        const fechaInicio = document.getElementById('filtroFechaInicio').value;
-        const fechaFin = document.getElementById('filtroFechaFin').value;
-        const filas = document.querySelectorAll('#tabla-kardex tr');
-
-        filas.forEach(fila => {
-            if(fila.querySelector('td[colspan="6"]')) return; 
-
-            const celdas = fila.getElementsByTagName('td');
-            const fechaTexto = celdas[0].innerText; 
-            const obra = celdas[1].innerText.toLowerCase();
-            const producto = celdas[2].innerText.toLowerCase();
-            const tipo = celdas[3].innerText.toLowerCase();
-
-            const coincideTexto = obra.includes(texto) || producto.includes(texto) || tipo.includes(texto);
-
-            let coincideFecha = true;
-            if (fechaInicio || fechaFin) {
-                const [fechaParte] = fechaTexto.split(','); 
-                const partes = fechaParte.trim().split('/');
-                if(partes.length === 3) {
-                    const fechaFila = new Date(partes[2], partes[1] - 1, partes[0]);
-                    if (fechaInicio) {
-                        const [anio, mes, dia] = fechaInicio.split('-');
-                        if (fechaFila < new Date(anio, mes - 1, dia)) coincideFecha = false;
-                    }
-                    if (fechaFin) {
-                        const [anio, mes, dia] = fechaFin.split('-');
-                        if (fechaFila > new Date(anio, mes - 1, dia, 23, 59, 59)) coincideFecha = false;
-                    }
-                }
-            }
-            fila.style.display = (coincideTexto && coincideFecha) ? '' : 'none';
-        });
-    }
-
-    function limpiarFiltros() {
-        document.getElementById('filtroTexto').value = '';
-        document.getElementById('filtroFechaInicio').value = '';
-        document.getElementById('filtroFechaFin').value = '';
-        filtrarKardex(); 
-    }
-
-    // --- CARGA DE DATOS ---
+    // --- CARGA DE DATOS (CON TOKEN INTEGRADO) ---
     async function cargarInventario() {
         try {
-            const respuesta = await fetch('https://sistema-encofrados.onrender.com/dashboard/inventario/?t=' + Date.now());
+            const respuesta = await fetch('https://sistema-encofrados.onrender.com/dashboard/inventario/?t=' + Date.now(), {
+                headers: obtenerHeaders()
+            });
+            
+            // Si el servidor responde 401 (No autorizado), cerramos sesión por seguridad
+            if (respuesta.status === 401) {
+                mostrarToast("❌ Sesión expirada, vuelve a iniciar", "danger");
+                cerrarSesion();
+                return;
+            }
+
             const datos = await respuesta.json();
             const tabla = document.getElementById('tabla-inventario');
             tabla.innerHTML = ''; 
@@ -537,7 +503,15 @@
 
     async function cargarKardex() {
         try {
-            const respuesta = await fetch('https://sistema-encofrados.onrender.com/kardex/?t=' + Date.now());
+            const respuesta = await fetch('https://sistema-encofrados.onrender.com/kardex/?t=' + Date.now(), {
+                headers: obtenerHeaders()
+            });
+            
+            if (respuesta.status === 401) {
+                cerrarSesion();
+                return;
+            }
+
             const datos = await respuesta.json();
             const tablaKardex = document.getElementById('tabla-kardex');
             tablaKardex.innerHTML = '';
@@ -561,11 +535,11 @@
                     </tr>`;
             });
         } catch (error) {
-            document.getElementById('tabla-kardex').innerHTML = '<tr><td colspan="6" class="text-center text-danger py-3">Error conectando con Kardex.</td></tr>';
+            document.getElementById('tabla-kardex').innerHTML = '<tr><td colspan="6" class="text-center text-danger py-3">Error al conectar con el Kardex.</td></tr>';
         }
     }
 
-    // --- OPERACIONES (CON ANTI-LAG) ---
+    // --- OPERACIONES (CON TOKEN Y ANTI-LAG) ---
     function inyectarKardexDOM(obra, producto, tipo, cantidad) {
         const tablaKardex = document.getElementById('tabla-kardex');
         if (tablaKardex.querySelector('td[colspan="6"]')) tablaKardex.innerHTML = '';
@@ -585,7 +559,11 @@
             </tr>`;
             
         tablaKardex.insertAdjacentHTML('afterbegin', nuevaFila);
-        setTimeout(() => { cargarInventario(); cargarKardex(); }, 2500);
+        
+        setTimeout(() => {
+            cargarInventario();
+            cargarKardex();
+        }, 2500);
     }
 
     function actualizarKpisDOM(tipo, cantTotal, cantAlmacen = 0, cantMant = 0) {
@@ -594,9 +572,12 @@
         let mantActual = parseInt(document.getElementById('kpi-mant').innerText) || 0;
         
         if (tipo === 'SALIDA') {
-            almacenActual -= cantTotal; obraActual += cantTotal;
+            almacenActual -= cantTotal;
+            obraActual += cantTotal;
         } else {
-            obraActual -= cantTotal; almacenActual += cantAlmacen; mantActual += cantMant;
+            obraActual -= cantTotal; 
+            almacenActual += cantAlmacen;
+            mantActual += cantMant;
         }
         
         document.getElementById('kpi-almacen').innerText = almacenActual;
@@ -606,6 +587,7 @@
         const totalGeneral = almacenActual + obraActual + mantActual;
         const tasaUtil = totalGeneral > 0 ? ((obraActual / totalGeneral) * 100).toFixed(1) : 0;
         document.getElementById('kpi-util').innerText = tasaUtil + "%";
+        
         actualizarGrafico(almacenActual, obraActual, mantActual);
     }
 
@@ -613,6 +595,7 @@
         e.preventDefault(); 
         const btn = this.querySelector('button[type="submit"]');
         const textoOriginal = btn.innerHTML;
+        
         btn.disabled = true;
         btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Procesando...`;
 
@@ -622,22 +605,36 @@
 
         try {
             const datos = { tipo_movimiento: "Salida", id_obra: idObra, id_producto: idProd, cantidad: cantidad };
+            
+            // Aquí enviamos el Token en los headers combinando el Content-Type y la autorización
             const res = await fetch('https://sistema-encofrados.onrender.com/despachos/', { 
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) 
+                method: 'POST', 
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...obtenerHeaders()
+                }, 
+                body: JSON.stringify(datos) 
             });
             
             if (res.ok) { 
                 mostrarToast("✅ Material despachado y registrado con éxito.", "success");
                 document.getElementById('cantId').value = ''; 
+                
                 inyectarKardexDOM(idObra, idProd, 'SALIDA', cantidad);
                 actualizarKpisDOM('SALIDA', cantidad);
             } else { 
-                const err = await res.json(); mostrarToast("❌ " + (err.detail || "Error."), "danger");
+                if (res.status === 401) {
+                    cerrarSesion();
+                } else {
+                    const errorData = await res.json();
+                    mostrarToast("❌ " + (errorData.detail || "Error en el despacho."), "danger");
+                }
             }
         } catch (error) {
-            mostrarToast("❌ Error de conexión.", "danger");
+            mostrarToast("❌ Error de conexión con el servidor.", "danger");
         } finally {
-            btn.disabled = false; btn.innerHTML = textoOriginal;
+            btn.disabled = false;
+            btn.innerHTML = textoOriginal;
         }
     });
 
@@ -645,6 +642,7 @@
         e.preventDefault(); 
         const btn = this.querySelector('button[type="submit"]');
         const textoOriginal = btn.innerHTML;
+        
         btn.disabled = true;
         btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Procesando...`;
 
@@ -657,56 +655,87 @@
 
         try {
             const datos = { id_obra: idObra, id_producto: idProd, cantidad_buena: cantBuena, cantidad_mantenimiento: cantMant, cantidad_perdida: cantPerdida };
+            
             const res = await fetch('https://sistema-encofrados.onrender.com/devoluciones/', { 
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) 
+                method: 'POST', 
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...obtenerHeaders()
+                }, 
+                body: JSON.stringify(datos) 
             });
             
             if (res.ok) { 
-                mostrarToast("✅ Devolución procesada.", "success");
+                mostrarToast("✅ Devolución procesada correctamente.", "success");
+                
                 document.getElementById('devBuena').value = '0';
                 document.getElementById('devMant').value = '0';
                 document.getElementById('devPerdida').value = '0';
+
                 inyectarKardexDOM(idObra, idProd, 'DEVOLUCIÓN', totalDevuelto);
                 actualizarKpisDOM('DEVOLUCIÓN', totalDevuelto, cantBuena, cantMant);
             } else { 
-                const err = await res.json(); mostrarToast("❌ " + (err.detail || "Error."), "danger");
+                if (res.status === 401) {
+                    cerrarSesion();
+                } else {
+                    const errorData = await res.json();
+                    mostrarToast("❌ " + (errorData.detail || "Error en la devolución."), "danger");
+                }
             }
         } catch (error) {
-            mostrarToast("❌ Error de conexión.", "danger");
+            mostrarToast("❌ Error de conexión con el servidor.", "danger");
         } finally {
-            btn.disabled = false; btn.innerHTML = textoOriginal;
+            btn.disabled = false;
+            btn.innerHTML = textoOriginal;
         }
     });
 
+    // --- LIQUIDACIÓN (CON TOKEN) ---
     document.getElementById('form-liquidacion').addEventListener('submit', async function(e) {
         e.preventDefault();
         const idObra = document.getElementById('liqObraId').value;
+        
         try {
-            const respuesta = await fetch(`https://sistema-encofrados.onrender.com/obras/${idObra}/liquidacion/`);
+            const respuesta = await fetch(`https://sistema-encofrados.onrender.com/obras/${idObra}/liquidacion/`, {
+                headers: obtenerHeaders()
+            });
+            
             if (respuesta.ok) {
                 const datos = await respuesta.json();
                 document.getElementById('resultado-liquidacion').style.display = 'block';
                 document.getElementById('liqTotal').innerText = datos.penalidad_total_moneda.toFixed(2);
                 document.getElementById('pdf-obra-id').innerText = "OBR-" + String(idObra).padStart(4, '0');
-                document.getElementById('pdf-fecha').innerText = new Date().toLocaleDateString('es-PE');
+                
+                const hoy = new Date();
+                document.getElementById('pdf-fecha').innerText = hoy.toLocaleDateString('es-PE');
+                
                 const tablaBody = document.getElementById('liqDetallesTabla');
                 tablaBody.innerHTML = '';
+                
                 if(datos.desglose_perdidas.length === 0) {
-                    tablaBody.innerHTML = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #64748b;">No hay penalidades.</td></tr>';
+                    tablaBody.innerHTML = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #64748b;">No hay penalidades registradas. Devolución al 100%.</td></tr>';
                 } else {
                     datos.desglose_perdidas.forEach(item => {
                         tablaBody.innerHTML += `
                             <tr style="border-bottom: 1px solid #f1f5f9;">
-                                <td style="padding: 12px; text-align: center; font-weight: bold;">${item.cantidad_perdida}</td>
-                                <td style="padding: 12px;">${item.producto}</td>
-                                <td style="padding: 12px; text-align: right;">S/ ${item.costo_unitario.toFixed(2)}</td>
-                                <td style="padding: 12px; text-align: right; font-weight: bold;">S/ ${item.subtotal_cobro.toFixed(2)}</td>
+                                <td style="padding: 12px; text-align: center; font-weight: bold; color: #0f172a;">${item.cantidad_perdida}</td>
+                                <td style="padding: 12px; color: #334155;">${item.producto}</td>
+                                <td style="padding: 12px; text-align: right; color: #334155;">S/ ${item.costo_unitario.toFixed(2)}</td>
+                                <td style="padding: 12px; text-align: right; font-weight: bold; color: #0f172a;">S/ ${item.subtotal_cobro.toFixed(2)}</td>
                             </tr>`;
                     });
                 }
-                mostrarToast("✅ Liquidación generada.", "success");
-            } else { mostrarToast("❌ Error al liquidar.", "danger"); }
-        } catch (error) { mostrarToast("❌ Error de conexión.", "danger"); }
+                mostrarToast("✅ Liquidación generada con éxito.", "success");
+            } else { 
+                if (respuesta.status === 401) {
+                    cerrarSesion();
+                } else {
+                    mostrarToast("❌ Error al liquidar la obra.", "danger"); 
+                }
+            }
+        } catch (error) { 
+            mostrarToast("❌ Error de conexión con el servidor.", "danger"); 
+        }
     });
 
     document.getElementById('btnDescargarPdf').addEventListener('click', function() {
@@ -714,13 +743,88 @@
         window.getSelection().removeAllRanges();
         const elemento = document.getElementById('ticket-pdf');
         const opciones = {
-            margin: 0.5, filename: 'Liquidacion_Obra_' + document.getElementById('liqObraId').value + '.pdf',
-            image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, scrollY: 0 },
-            jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+            margin:       0.5,
+            filename:     'Liquidacion_Obra_' + document.getElementById('liqObraId').value + '.pdf',
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, scrollY: 0 },
+            jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
         };
         html2pdf().set(opciones).from(elemento).save();
-        mostrarToast("📄 PDF descargado.", "success");
+        mostrarToast("📄 PDF descargado correctamente.", "success");
     });
+    
+    // --- FILTROS Y EXCEL ---
+    function filtrarKardex() {
+        const texto = document.getElementById('filtroTexto').value.toLowerCase();
+        const fechaInicio = document.getElementById('filtroFechaInicio').value;
+        const fechaFin = document.getElementById('filtroFechaFin').value;
+        const filas = document.querySelectorAll('#tabla-kardex tr');
+
+        filas.forEach(fila => {
+            if(fila.querySelector('td[colspan="6"]')) return; 
+
+            const celdas = fila.getElementsByTagName('td');
+            const fechaTexto = celdas[0].innerText; 
+            const obra = celdas[1].innerText.toLowerCase();
+            const producto = celdas[2].innerText.toLowerCase();
+            const tipo = celdas[3].innerText.toLowerCase();
+
+            const coincideTexto = obra.includes(texto) || producto.includes(texto) || tipo.includes(texto);
+
+            let coincideFecha = true;
+            if (fechaInicio || fechaFin) {
+                const [fechaParte] = fechaTexto.split(','); 
+                const partes = fechaParte.trim().split('/');
+                
+                if(partes.length === 3) {
+                    const fechaFila = new Date(partes[2], partes[1] - 1, partes[0]);
+                    
+                    if (fechaInicio) {
+                        const [anio, mes, dia] = fechaInicio.split('-');
+                        const fInicio = new Date(anio, mes - 1, dia);
+                        if (fechaFila < fInicio) coincideFecha = false;
+                    }
+                    if (fechaFin) {
+                        const [anio, mes, dia] = fechaFin.split('-');
+                        const fFin = new Date(anio, mes - 1, dia, 23, 59, 59);
+                        if (fechaFila > fFin) coincideFecha = false;
+                    }
+                }
+            }
+
+            if (coincideTexto && coincideFecha) {
+                fila.style.display = '';
+            } else {
+                fila.style.display = 'none';
+            }
+        });
+    }
+
+    function limpiarFiltros() {
+        document.getElementById('filtroTexto').value = '';
+        document.getElementById('filtroFechaInicio').value = '';
+        document.getElementById('filtroFechaFin').value = '';
+        filtrarKardex(); 
+    }
+
+    function exportarExcel() {
+        const tabla = document.getElementById('tabla-kardex');
+        
+        if (tabla.innerText.includes('No hay movimientos') || tabla.innerText.includes('Cargando')) {
+            mostrarToast("❌ No hay datos para exportar.", "danger");
+            return;
+        }
+
+        const tablaCompleta = document.querySelector('.table-responsive table');
+        const workbook = XLSX.utils.table_to_book(tablaCompleta, { sheet: "Historial_Kardex" });
+        
+        const fechaHoy = new Date().toLocaleDateString('es-PE').replace(/\//g, '-');
+        const nombreArchivo = `Kardex_InmoFormwork_${fechaHoy}.xlsx`;
+        
+        XLSX.writeFile(workbook, nombreArchivo);
+        
+        mostrarToast("📊 Archivo Excel generado y descargado con éxito.", "success");
+    }
 </script>
 </body>
 </html>
