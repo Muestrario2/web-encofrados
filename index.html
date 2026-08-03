@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; color: #1e293b; }
         .navbar-enterprise { background-color: #0f172a; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
@@ -142,7 +143,10 @@
             <div class="card p-4">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="card-title fw-bold text-dark m-0">📋 Kardex: Historial de Movimientos en Vivo</h5>
-                    <button onclick="cargarKardex()" class="btn btn-outline-secondary btn-sm">🔄 Actualizar Historial</button>
+                    <div>
+                        <button onclick="cargarKardex()" class="btn btn-outline-secondary btn-sm">🔄 Actualizar</button>
+                        <button onclick="exportarExcel()" class="btn btn-success btn-sm ms-2">📊 Exportar Excel</button>
+                    </div>
                 </div>
                 <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
                     <table class="table table-sm table-striped align-middle">
@@ -489,6 +493,32 @@
         actualizarGrafico(almacenActual, obraActual, mantActual);
     }
 
+    // --- FUNCIÓN PARA EXPORTAR KARDEX A EXCEL ---
+    function exportarExcel() {
+        const tabla = document.getElementById('tabla-kardex');
+        
+        // Validación por si la tabla está vacía
+        if (tabla.innerText.includes('No hay movimientos') || tabla.innerText.includes('Cargando')) {
+            mostrarToast("❌ No hay datos para exportar.", "danger");
+            return;
+        }
+
+        // Seleccionamos la tabla completa (incluyendo encabezados)
+        const tablaCompleta = document.querySelector('.table-responsive table');
+        
+        // Convertimos la tabla HTML a un libro de Excel usando SheetJS
+        const workbook = XLSX.utils.table_to_book(tablaCompleta, { sheet: "Historial_Kardex" });
+        
+        // Generamos el nombre del archivo con la fecha de hoy
+        const fechaHoy = new Date().toLocaleDateString('es-PE').replace(/\//g, '-');
+        const nombreArchivo = `Kardex_InmoFormwork_${fechaHoy}.xlsx`;
+        
+        // Descargamos el archivo
+        XLSX.writeFile(workbook, nombreArchivo);
+        
+        mostrarToast("📊 Archivo Excel generado y descargado con éxito.", "success");
+    }
+    
     // 3. DESPACHO CON ANTI-LAG
     document.getElementById('form-despacho').addEventListener('submit', async function(e) {
         e.preventDefault(); 
