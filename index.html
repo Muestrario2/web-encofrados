@@ -21,6 +21,9 @@
         .table th { font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; background-color: #f8fafc; color: #475569; }
         .form-control { border-radius: 8px; border: 1px solid #cbd5e1; padding: 0.6rem 0.9rem; font-size: 0.925rem; }
         .form-control:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
+        /* Animación suave para el Toast */
+        .toast { transition: opacity 0.3s ease-in-out; opacity: 0; display: none; }
+        .toast.show { opacity: 1; display: block; }
     </style>
 </head>
 <body>
@@ -288,14 +291,14 @@
     </div>
 </div>
 
-<!-- CONTENEDOR DE TOASTS / NOTIFICACIONES FLOTANTES -->
+<!-- CONTENEDOR DE TOASTS / NOTIFICACIONES FLOTANTES (NATIVO) -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 3000;">
     <div id="enterpriseToast" class="toast align-items-center text-white border-0 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true" style="border-radius: 10px;">
         <div class="d-flex">
             <div id="toast-body" class="toast-body fw-semibold py-3 fs-6">
                 Mensaje del sistema
             </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="document.getElementById('enterpriseToast').className='toast align-items-center text-white border-0 shadow-lg'"></button>
         </div>
     </div>
 </div>
@@ -330,7 +333,7 @@
         if (e.key === 'Enter') { verificarPassword(); }
     });
 
-    // NOTIFICACIÓN NATIVA FLOTANTE (Sin depender de Bootstrap)
+    // 1. NOTIFICACIÓN NATIVA FLOTANTE (Sin depender de Bootstrap.js)
     function mostrarToast(mensaje, tipo = 'success') {
         const toastEl = document.getElementById('enterpriseToast');
         const toastBody = document.getElementById('toast-body');
@@ -343,7 +346,7 @@
             toastEl.className = 'toast align-items-center text-white bg-danger border-0 shadow-lg show';
         }
         
-        // Se oculta automáticamente a los 3.5 segundos de forma limpia
+        // Se oculta automáticamente
         setTimeout(() => {
             toastEl.className = 'toast align-items-center text-white border-0 shadow-lg';
         }, 3500);
@@ -370,7 +373,6 @@
 
     async function cargarInventario() {
         try {
-            // Añadimos ?t=Date.now() para evitar la caché del navegador
             const respuesta = await fetch('https://sistema-encofrados.onrender.com/dashboard/inventario/?t=' + Date.now());
             const datos = await respuesta.json();
             const tabla = document.getElementById('tabla-inventario');
@@ -405,7 +407,6 @@
 
     async function cargarKardex() {
         try {
-            // Añadimos ?t=Date.now() para forzar datos frescos en tiempo real
             const respuesta = await fetch('https://sistema-encofrados.onrender.com/kardex/?t=' + Date.now());
             const datos = await respuesta.json();
             const tablaKardex = document.getElementById('tabla-kardex');
@@ -435,8 +436,60 @@
         }
     }
 
-    // DESPACHO CON SPINNER Y TOAST
-    // DESPACHO ACTUALIZADO
+    // 2. FUNCIONES ANTI-LAG (INYECCIÓN VISUAL INSTANTÁNEA)
+    function inyectarKardexDOM(obra, producto, tipo, cantidad) {
+        const tablaKardex = document.getElementById('tabla-kardex');
+        if (tablaKardex.querySelector('td[colspan="6"]')) tablaKardex.innerHTML = '';
+        
+        const badgeColor = tipo === 'SALIDA' ? 'bg-primary' : 'bg-success';
+        const fechaFormateada = new Date().toLocaleString('es-PE');
+        const detalle = `Movimiento de ${tipo.toLowerCase()} registrado`;
+        
+        const nuevaFila = `
+            <tr style="background-color: #e0f2fe; transition: background-color 2s;">
+                <td class="small text-muted">${fechaFormateada}</td>
+                <td><strong>Obra #${obra}</strong></td>
+                <td>${producto}</td>
+                <td><span class="badge ${badgeColor}">${tipo}</span></td>
+                <td class="small">${detalle}</td>
+                <td class="text-end fw-bold">${cantidad}</td>
+            </tr>`;
+            
+        tablaKardex.insertAdjacentHTML('afterbegin', nuevaFila);
+        
+        // Sincronización silenciosa en segundo plano
+        setTimeout(() => {
+            cargarInventario();
+            cargarKardex();
+        }, 2500);
+    }
+
+    function actualizarKpisDOM(tipo, cantTotal, cantAlmacen = 0, cantMant = 0) {
+        let almacenActual = parseInt(document.getElementById('kpi-almacen').innerText) || 0;
+        let obraActual = parseInt(document.getElementById('kpi-obra').innerText) || 0;
+        let mantActual = parseInt(document.getElementById('kpi-mant').innerText) || 0;
+        
+        if (tipo === 'SALIDA') {
+            almacenActual -= cantTotal;
+            obraActual += cantTotal;
+        } else {
+            obraActual -= cantTotal; 
+            almacenActual += cantAlmacen;
+            mantActual += cantMant;
+        }
+        
+        document.getElementById('kpi-almacen').innerText = almacenActual;
+        document.getElementById('kpi-obra').innerText = obraActual;
+        document.getElementById('kpi-mant').innerText = mantActual;
+        
+        const totalGeneral = almacenActual + obraActual + mantActual;
+        const tasaUtil = totalGeneral > 0 ? ((obraActual / totalGeneral) * 100).toFixed(1) : 0;
+        document.getElementById('kpi-util').innerText = tasaUtil + "%";
+        
+        actualizarGrafico(almacenActual, obraActual, mantActual);
+    }
+
+    // 3. DESPACHO CON ANTI-LAG
     document.getElementById('form-despacho').addEventListener('submit', async function(e) {
         e.preventDefault(); 
         const btn = this.querySelector('button[type="submit"]');
@@ -445,26 +498,23 @@
         btn.disabled = true;
         btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Procesando...`;
 
+        const idObra = parseInt(document.getElementById('obraId').value);
+        const idProd = document.getElementById('prodId').value;
+        const cantidad = parseInt(document.getElementById('cantId').value);
+
         try {
-            const datos = {
-                tipo_movimiento: "Salida", 
-                id_obra: parseInt(document.getElementById('obraId').value),
-                id_producto: document.getElementById('prodId').value, 
-                cantidad: parseInt(document.getElementById('cantId').value)
-            };
+            const datos = { tipo_movimiento: "Salida", id_obra: idObra, id_producto: idProd, cantidad: cantidad };
             const res = await fetch('https://sistema-encofrados.onrender.com/despachos/', { 
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify(datos) 
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) 
             });
             
             if (res.ok) { 
                 mostrarToast("✅ Material despachado y registrado con éxito.", "success");
-                document.getElementById('cantId').value = '';
+                document.getElementById('cantId').value = ''; 
                 
-                // Forzamos la recarga inmediata de inventario y kardex
-                await cargarInventario();
-                await cargarKardex();
+                // Magia visual al instante
+                inyectarKardexDOM(idObra, idProd, 'SALIDA', cantidad);
+                actualizarKpisDOM('SALIDA', cantidad);
             } else { 
                 const errorData = await res.json();
                 mostrarToast("❌ " + (errorData.detail || "Error en el despacho."), "danger");
@@ -477,7 +527,7 @@
         }
     });
 
-    // DEVOLUCIÓN ACTUALIZADA
+    // 4. DEVOLUCIÓN CON ANTI-LAG
     document.getElementById('form-devolucion').addEventListener('submit', async function(e) {
         e.preventDefault(); 
         const btn = this.querySelector('button[type="submit"]');
@@ -486,70 +536,29 @@
         btn.disabled = true;
         btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Procesando...`;
 
+        const idObra = parseInt(document.getElementById('devObraId').value);
+        const idProd = document.getElementById('devProdId').value;
+        const cantBuena = parseInt(document.getElementById('devBuena').value) || 0;
+        const cantMant = parseInt(document.getElementById('devMant').value) || 0;
+        const cantPerdida = parseInt(document.getElementById('devPerdida').value) || 0;
+        const totalDevuelto = cantBuena + cantMant + cantPerdida;
+
         try {
-            const datos = {
-                id_obra: parseInt(document.getElementById('devObraId').value), 
-                id_producto: document.getElementById('devProdId').value,
-                cantidad_buena: parseInt(document.getElementById('devBuena').value), 
-                cantidad_mantenimiento: parseInt(document.getElementById('devMant').value),
-                cantidad_perdida: parseInt(document.getElementById('devPerdida').value)
-            };
+            const datos = { id_obra: idObra, id_producto: idProd, cantidad_buena: cantBuena, cantidad_mantenimiento: cantMant, cantidad_perdida: cantPerdida };
             const res = await fetch('https://sistema-encofrados.onrender.com/devoluciones/', { 
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify(datos) 
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos) 
             });
             
             if (res.ok) { 
                 mostrarToast("✅ Devolución procesada correctamente.", "success");
                 
-                // Forzamos la recarga inmediata de inventario y kardex
-                await cargarInventario();
-                await cargarKardex();
-            } else { 
-                const errorData = await res.json();
-                mostrarToast("❌ " + (errorData.detail || "Error en la devolución."), "danger");
-            }
-        } catch (error) {
-            mostrarToast("❌ Error de conexión con el servidor.", "danger");
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = textoOriginal;
-        }
-    });
-    
-    // DEVOLUCIÓN CON SPINNER Y TOAST
-    document.getElementById('form-devolucion').addEventListener('submit', async function(e) {
-        e.preventDefault(); 
-        const btn = this.querySelector('button[type="submit"]');
-        const textoOriginal = btn.innerHTML;
-        
-        btn.disabled = true;
-        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Procesando...`;
+                document.getElementById('devBuena').value = '0';
+                document.getElementById('devMant').value = '0';
+                document.getElementById('devPerdida').value = '0';
 
-        try {
-            const datos = {
-                id_obra: parseInt(document.getElementById('devObraId').value), 
-                id_producto: document.getElementById('devProdId').value,
-                cantidad_buena: parseInt(document.getElementById('devBuena').value), 
-                cantidad_mantenimiento: parseInt(document.getElementById('devMant').value),
-                cantidad_perdida: parseInt(document.getElementById('devPerdida').value)
-            };
-            const res = await fetch('https://sistema-encofrados.onrender.com/devoluciones/', { 
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify(datos) 
-            });
-            
-            if (res.ok) { 
-                mostrarToast("✅ Devolución procesada correctamente.", "success");
-                
-                // Esperamos 500ms y actualizamos el inventario y el kardex automáticamente
-                setTimeout(() => {
-                    cargarInventario(); 
-                    cargarKardex();
-                }, 500);
-
+                // Magia visual al instante
+                inyectarKardexDOM(idObra, idProd, 'DEVOLUCIÓN', totalDevuelto);
+                actualizarKpisDOM('DEVOLUCIÓN', totalDevuelto, cantBuena, cantMant);
             } else { 
                 const errorData = await res.json();
                 mostrarToast("❌ " + (errorData.detail || "Error en la devolución."), "danger");
@@ -562,6 +571,7 @@
         }
     });
 
+    // 5. LIQUIDACIÓN Y PDF
     document.getElementById('form-liquidacion').addEventListener('submit', async function(e) {
         e.preventDefault();
         const idObra = document.getElementById('liqObraId').value;
