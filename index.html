@@ -22,7 +22,6 @@
         .table th { font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; background-color: #f8fafc; color: #475569; }
         .form-control { border-radius: 8px; border: 1px solid #cbd5e1; padding: 0.6rem 0.9rem; font-size: 0.925rem; }
         .form-control:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
-        /* Animación suave para el Toast */
         .toast { transition: opacity 0.3s ease-in-out; opacity: 0; display: none; }
         .toast.show { opacity: 1; display: block; }
     </style>
@@ -37,12 +36,18 @@
             <h3 class="fw-bold text-dark m-0">InmoFormwork</h3>
             <p class="text-muted small mt-1">Enterprise WMS & Kardex</p>
         </div>
-        <div class="mb-3">
-            <label class="form-label fw-semibold text-secondary small">CONTRASEÑA DE ACCESO</label>
-            <input type="password" id="passInput" class="form-control form-control-lg" placeholder="••••••••">
-        </div>
-        <button onclick="verificarPassword()" class="btn btn-primary w-100 btn-lg fw-semibold py-2">Acceder al Sistema</button>
-        <p id="error-msg" class="text-danger text-center small mt-3 fw-semibold" style="display:none;">❌ Contraseña incorrecta</p>
+        <form id="form-login">
+            <div class="mb-3">
+                <label class="form-label fw-semibold text-secondary small">USUARIO</label>
+                <input type="text" id="userInput" class="form-control form-control-lg" placeholder="Ej: admin" required>
+            </div>
+            <div class="mb-4">
+                <label class="form-label fw-semibold text-secondary small">CONTRASEÑA</label>
+                <input type="password" id="passInput" class="form-control form-control-lg" placeholder="••••••••" required>
+            </div>
+            <button type="submit" id="btnLogin" class="btn btn-primary w-100 btn-lg fw-semibold py-2">Acceder al Sistema</button>
+            <p id="error-msg" class="text-danger text-center small mt-3 fw-semibold" style="display:none;">❌ Usuario o contraseña incorrectos</p>
+        </form>
     </div>
 </div>
 
@@ -53,7 +58,7 @@
             <span>🏗️</span> InmoFormwork <span class="badge bg-primary fs-6 fw-normal ms-2">WMS Enterprise</span>
         </a>
         <div class="d-flex align-items-center gap-3">
-            <span class="text-light small d-none d-md-inline">🟢 Sistema en la Nube</span>
+            <span class="text-light small d-none d-md-inline">🟢 En línea | Rol: <strong id="lblRol" class="text-warning"></strong></span>
             <button onclick="cerrarSesion()" class="btn btn-outline-light btn-sm fw-semibold px-3">Cerrar Sesión</button>
         </div>
     </div>
@@ -63,7 +68,7 @@
 <div class="container pb-5" id="dashboard-screen" style="display: none; opacity: 0; transition: opacity 0.4s ease-in-out;">
     
     <!-- KPIS -->
-    <div class="row g-3 mb-4">
+    <div class="row g-3 mb-4" id="seccion-kpis">
         <div class="col-xl-3 col-md-6">
             <div class="card p-3 kpi-card success">
                 <div class="text-muted small fw-bold text-uppercase">Stock en Almacén</div>
@@ -250,8 +255,8 @@
         </div>
     </div>
 
-    <!-- LIQUIDACIÓN -->
-    <div class="row">
+    <!-- LIQUIDACIÓN (OCULTO PARA ALMACENERO) -->
+    <div class="row" id="seccion-liquidacion">
         <div class="col-12">
             <div class="card p-4 border-top border-danger border-4">
                 <div class="card-body">
@@ -315,7 +320,7 @@
     </div>
 </div>
 
-<!-- CONTENEDOR DE TOASTS / NOTIFICACIONES FLOTANTES (NATIVO) -->
+<!-- CONTENEDOR DE TOASTS -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 3000;">
     <div id="enterpriseToast" class="toast align-items-center text-white border-0 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true" style="border-radius: 10px;">
         <div class="d-flex">
@@ -328,23 +333,72 @@
 </div>
 
 <script>
-    function verificarPassword() {
+    // --- 1. SISTEMA DE LOGIN REAL CON ROLES ---
+    document.getElementById('form-login').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const btn = document.getElementById('btnLogin');
+        const user = document.getElementById('userInput').value.trim();
         const pass = document.getElementById('passInput').value.trim();
-        if(pass === "163000") { 
-            const loginScreen = document.getElementById('login-screen');
-            loginScreen.style.cssText = 'display: none !important;';
-            document.getElementById('navbar-screen').style.display = 'block';
-            const dashboard = document.getElementById('dashboard-screen');
-            dashboard.style.display = 'block';
-            setTimeout(() => { dashboard.style.opacity = '1'; }, 50);
-            cargarInventario(); 
-            cargarKardex();
+        
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Entrando...`;
+
+        try {
+            const res = await fetch('https://sistema-encofrados.onrender.com/login/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: user, password: pass })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                
+                // Guardamos el token en memoria
+                sessionStorage.setItem('token', data.access_token);
+                sessionStorage.setItem('rol', data.rol);
+                
+                document.getElementById('error-msg').style.display = 'none';
+                
+                // Aplicamos la lógica de Roles a la interfaz
+                configurarInterfazPorRol(data.rol);
+                
+                // Animación de entrada
+                document.getElementById('login-screen').style.cssText = 'display: none !important;';
+                document.getElementById('navbar-screen').style.display = 'block';
+                const dashboard = document.getElementById('dashboard-screen');
+                dashboard.style.display = 'block';
+                setTimeout(() => { dashboard.style.opacity = '1'; }, 50);
+                
+                // Cargamos la data
+                cargarInventario(); 
+                cargarKardex();
+                
+            } else {
+                document.getElementById('error-msg').style.display = 'block';
+            }
+        } catch (error) {
+            alert("Error conectando al servidor. Espera unos segundos a que Render termine de iniciar.");
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Acceder al Sistema';
+        }
+    });
+
+    function configurarInterfazPorRol(rol) {
+        document.getElementById('lblRol').innerText = rol;
+        
+        // Si es Almacenero, ocultamos la liquidación (dinero)
+        if (rol === 'ALMACENERO') {
+            document.getElementById('seccion-liquidacion').style.display = 'none';
         } else {
-            document.getElementById('error-msg').style.display = 'block';
+            document.getElementById('seccion-liquidacion').style.display = 'flex';
         }
     }
 
     function cerrarSesion() {
+        sessionStorage.clear();
+        document.getElementById('userInput').value = '';
         document.getElementById('passInput').value = '';
         document.getElementById('error-msg').style.display = 'none';
         document.getElementById('dashboard-screen').style.display = 'none';
@@ -353,15 +407,10 @@
         document.getElementById('login-screen').style.display = 'flex';
     }
 
-    document.getElementById('passInput').addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') { verificarPassword(); }
-    });
-
-    // 1. NOTIFICACIÓN NATIVA FLOTANTE (Sin depender de Bootstrap.js)
+    // --- FUNCIONES VISUALES ---
     function mostrarToast(mensaje, tipo = 'success') {
         const toastEl = document.getElementById('enterpriseToast');
         const toastBody = document.getElementById('toast-body');
-        
         toastBody.innerText = mensaje;
         
         if (tipo === 'success') {
@@ -370,14 +419,12 @@
             toastEl.className = 'toast align-items-center text-white bg-danger border-0 shadow-lg show';
         }
         
-        // Se oculta automáticamente
         setTimeout(() => {
             toastEl.className = 'toast align-items-center text-white border-0 shadow-lg';
         }, 3500);
     }
 
     let miGrafico = null;
-
     function actualizarGrafico(almacen, obra, mant) {
         const ctx = document.getElementById('graficoInventario').getContext('2d');
         if (miGrafico) { miGrafico.destroy(); }
@@ -395,6 +442,65 @@
         });
     }
 
+    // --- EXPORTAR EXCEL ---
+    function exportarExcel() {
+        const tabla = document.getElementById('tabla-kardex');
+        if (tabla.innerText.includes('No hay movimientos') || tabla.innerText.includes('Cargando')) {
+            mostrarToast("❌ No hay datos para exportar.", "danger"); return;
+        }
+        const tablaCompleta = document.querySelector('.table-responsive table');
+        const workbook = XLSX.utils.table_to_book(tablaCompleta, { sheet: "Historial_Kardex" });
+        const fechaHoy = new Date().toLocaleDateString('es-PE').replace(/\//g, '-');
+        XLSX.writeFile(workbook, `Kardex_InmoFormwork_${fechaHoy}.xlsx`);
+        mostrarToast("📊 Archivo Excel generado con éxito.", "success");
+    }
+
+    // --- FILTROS AVANZADOS ---
+    function filtrarKardex() {
+        const texto = document.getElementById('filtroTexto').value.toLowerCase();
+        const fechaInicio = document.getElementById('filtroFechaInicio').value;
+        const fechaFin = document.getElementById('filtroFechaFin').value;
+        const filas = document.querySelectorAll('#tabla-kardex tr');
+
+        filas.forEach(fila => {
+            if(fila.querySelector('td[colspan="6"]')) return; 
+
+            const celdas = fila.getElementsByTagName('td');
+            const fechaTexto = celdas[0].innerText; 
+            const obra = celdas[1].innerText.toLowerCase();
+            const producto = celdas[2].innerText.toLowerCase();
+            const tipo = celdas[3].innerText.toLowerCase();
+
+            const coincideTexto = obra.includes(texto) || producto.includes(texto) || tipo.includes(texto);
+
+            let coincideFecha = true;
+            if (fechaInicio || fechaFin) {
+                const [fechaParte] = fechaTexto.split(','); 
+                const partes = fechaParte.trim().split('/');
+                if(partes.length === 3) {
+                    const fechaFila = new Date(partes[2], partes[1] - 1, partes[0]);
+                    if (fechaInicio) {
+                        const [anio, mes, dia] = fechaInicio.split('-');
+                        if (fechaFila < new Date(anio, mes - 1, dia)) coincideFecha = false;
+                    }
+                    if (fechaFin) {
+                        const [anio, mes, dia] = fechaFin.split('-');
+                        if (fechaFila > new Date(anio, mes - 1, dia, 23, 59, 59)) coincideFecha = false;
+                    }
+                }
+            }
+            fila.style.display = (coincideTexto && coincideFecha) ? '' : 'none';
+        });
+    }
+
+    function limpiarFiltros() {
+        document.getElementById('filtroTexto').value = '';
+        document.getElementById('filtroFechaInicio').value = '';
+        document.getElementById('filtroFechaFin').value = '';
+        filtrarKardex(); 
+    }
+
+    // --- CARGA DE DATOS ---
     async function cargarInventario() {
         try {
             const respuesta = await fetch('https://sistema-encofrados.onrender.com/dashboard/inventario/?t=' + Date.now());
@@ -437,7 +543,7 @@
             tablaKardex.innerHTML = '';
 
             if(datos.length === 0) {
-                tablaKardex.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No hay movimientos registrados todavía.</td></tr>';
+                tablaKardex.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No hay movimientos registrados.</td></tr>';
                 return;
             }
 
@@ -455,12 +561,11 @@
                     </tr>`;
             });
         } catch (error) {
-            console.error("Error al cargar Kardex:", error);
-            document.getElementById('tabla-kardex').innerHTML = '<tr><td colspan="6" class="text-center text-danger py-3">Error al conectar con el Kardex.</td></tr>';
+            document.getElementById('tabla-kardex').innerHTML = '<tr><td colspan="6" class="text-center text-danger py-3">Error conectando con Kardex.</td></tr>';
         }
     }
 
-    // 2. FUNCIONES ANTI-LAG (INYECCIÓN VISUAL INSTANTÁNEA)
+    // --- OPERACIONES (CON ANTI-LAG) ---
     function inyectarKardexDOM(obra, producto, tipo, cantidad) {
         const tablaKardex = document.getElementById('tabla-kardex');
         if (tablaKardex.querySelector('td[colspan="6"]')) tablaKardex.innerHTML = '';
@@ -480,12 +585,7 @@
             </tr>`;
             
         tablaKardex.insertAdjacentHTML('afterbegin', nuevaFila);
-        
-        // Sincronización silenciosa en segundo plano
-        setTimeout(() => {
-            cargarInventario();
-            cargarKardex();
-        }, 2500);
+        setTimeout(() => { cargarInventario(); cargarKardex(); }, 2500);
     }
 
     function actualizarKpisDOM(tipo, cantTotal, cantAlmacen = 0, cantMant = 0) {
@@ -494,12 +594,9 @@
         let mantActual = parseInt(document.getElementById('kpi-mant').innerText) || 0;
         
         if (tipo === 'SALIDA') {
-            almacenActual -= cantTotal;
-            obraActual += cantTotal;
+            almacenActual -= cantTotal; obraActual += cantTotal;
         } else {
-            obraActual -= cantTotal; 
-            almacenActual += cantAlmacen;
-            mantActual += cantMant;
+            obraActual -= cantTotal; almacenActual += cantAlmacen; mantActual += cantMant;
         }
         
         document.getElementById('kpi-almacen').innerText = almacenActual;
@@ -509,44 +606,15 @@
         const totalGeneral = almacenActual + obraActual + mantActual;
         const tasaUtil = totalGeneral > 0 ? ((obraActual / totalGeneral) * 100).toFixed(1) : 0;
         document.getElementById('kpi-util').innerText = tasaUtil + "%";
-        
         actualizarGrafico(almacenActual, obraActual, mantActual);
     }
 
-    // --- FUNCIÓN PARA EXPORTAR KARDEX A EXCEL ---
-    function exportarExcel() {
-        const tabla = document.getElementById('tabla-kardex');
-        
-        // Validación por si la tabla está vacía
-        if (tabla.innerText.includes('No hay movimientos') || tabla.innerText.includes('Cargando')) {
-            mostrarToast("❌ No hay datos para exportar.", "danger");
-            return;
-        }
-
-        // Seleccionamos la tabla completa (incluyendo encabezados)
-        const tablaCompleta = document.querySelector('.table-responsive table');
-        
-        // Convertimos la tabla HTML a un libro de Excel usando SheetJS
-        const workbook = XLSX.utils.table_to_book(tablaCompleta, { sheet: "Historial_Kardex" });
-        
-        // Generamos el nombre del archivo con la fecha de hoy
-        const fechaHoy = new Date().toLocaleDateString('es-PE').replace(/\//g, '-');
-        const nombreArchivo = `Kardex_InmoFormwork_${fechaHoy}.xlsx`;
-        
-        // Descargamos el archivo
-        XLSX.writeFile(workbook, nombreArchivo);
-        
-        mostrarToast("📊 Archivo Excel generado y descargado con éxito.", "success");
-    }
-
-    // 3. DESPACHO CON ANTI-LAG
     document.getElementById('form-despacho').addEventListener('submit', async function(e) {
         e.preventDefault(); 
         const btn = this.querySelector('button[type="submit"]');
         const textoOriginal = btn.innerHTML;
-        
         btn.disabled = true;
-        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Procesando...`;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Procesando...`;
 
         const idObra = parseInt(document.getElementById('obraId').value);
         const idProd = document.getElementById('prodId').value;
@@ -561,30 +629,24 @@
             if (res.ok) { 
                 mostrarToast("✅ Material despachado y registrado con éxito.", "success");
                 document.getElementById('cantId').value = ''; 
-                
-                // Magia visual al instante
                 inyectarKardexDOM(idObra, idProd, 'SALIDA', cantidad);
                 actualizarKpisDOM('SALIDA', cantidad);
             } else { 
-                const errorData = await res.json();
-                mostrarToast("❌ " + (errorData.detail || "Error en el despacho."), "danger");
+                const err = await res.json(); mostrarToast("❌ " + (err.detail || "Error."), "danger");
             }
         } catch (error) {
-            mostrarToast("❌ Error de conexión con el servidor.", "danger");
+            mostrarToast("❌ Error de conexión.", "danger");
         } finally {
-            btn.disabled = false;
-            btn.innerHTML = textoOriginal;
+            btn.disabled = false; btn.innerHTML = textoOriginal;
         }
     });
 
-    // 4. DEVOLUCIÓN CON ANTI-LAG
     document.getElementById('form-devolucion').addEventListener('submit', async function(e) {
         e.preventDefault(); 
         const btn = this.querySelector('button[type="submit"]');
         const textoOriginal = btn.innerHTML;
-        
         btn.disabled = true;
-        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Procesando...`;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Procesando...`;
 
         const idObra = parseInt(document.getElementById('devObraId').value);
         const idProd = document.getElementById('devProdId').value;
@@ -600,28 +662,22 @@
             });
             
             if (res.ok) { 
-                mostrarToast("✅ Devolución procesada correctamente.", "success");
-                
+                mostrarToast("✅ Devolución procesada.", "success");
                 document.getElementById('devBuena').value = '0';
                 document.getElementById('devMant').value = '0';
                 document.getElementById('devPerdida').value = '0';
-
-                // Magia visual al instante
                 inyectarKardexDOM(idObra, idProd, 'DEVOLUCIÓN', totalDevuelto);
                 actualizarKpisDOM('DEVOLUCIÓN', totalDevuelto, cantBuena, cantMant);
             } else { 
-                const errorData = await res.json();
-                mostrarToast("❌ " + (errorData.detail || "Error en la devolución."), "danger");
+                const err = await res.json(); mostrarToast("❌ " + (err.detail || "Error."), "danger");
             }
         } catch (error) {
-            mostrarToast("❌ Error de conexión con el servidor.", "danger");
+            mostrarToast("❌ Error de conexión.", "danger");
         } finally {
-            btn.disabled = false;
-            btn.innerHTML = textoOriginal;
+            btn.disabled = false; btn.innerHTML = textoOriginal;
         }
     });
 
-    // 5. LIQUIDACIÓN Y PDF
     document.getElementById('form-liquidacion').addEventListener('submit', async function(e) {
         e.preventDefault();
         const idObra = document.getElementById('liqObraId').value;
@@ -632,30 +688,25 @@
                 document.getElementById('resultado-liquidacion').style.display = 'block';
                 document.getElementById('liqTotal').innerText = datos.penalidad_total_moneda.toFixed(2);
                 document.getElementById('pdf-obra-id').innerText = "OBR-" + String(idObra).padStart(4, '0');
-                const hoy = new Date();
-                document.getElementById('pdf-fecha').innerText = hoy.toLocaleDateString('es-PE');
+                document.getElementById('pdf-fecha').innerText = new Date().toLocaleDateString('es-PE');
                 const tablaBody = document.getElementById('liqDetallesTabla');
                 tablaBody.innerHTML = '';
                 if(datos.desglose_perdidas.length === 0) {
-                    tablaBody.innerHTML = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #64748b;">No hay penalidades registradas. Devolución al 100%.</td></tr>';
+                    tablaBody.innerHTML = '<tr><td colspan="4" style="padding: 15px; text-align: center; color: #64748b;">No hay penalidades.</td></tr>';
                 } else {
                     datos.desglose_perdidas.forEach(item => {
                         tablaBody.innerHTML += `
                             <tr style="border-bottom: 1px solid #f1f5f9;">
-                                <td style="padding: 12px; text-align: center; font-weight: bold; color: #0f172a;">${item.cantidad_perdida}</td>
-                                <td style="padding: 12px; color: #334155;">${item.producto}</td>
-                                <td style="padding: 12px; text-align: right; color: #334155;">S/ ${item.costo_unitario.toFixed(2)}</td>
-                                <td style="padding: 12px; text-align: right; font-weight: bold; color: #0f172a;">S/ ${item.subtotal_cobro.toFixed(2)}</td>
+                                <td style="padding: 12px; text-align: center; font-weight: bold;">${item.cantidad_perdida}</td>
+                                <td style="padding: 12px;">${item.producto}</td>
+                                <td style="padding: 12px; text-align: right;">S/ ${item.costo_unitario.toFixed(2)}</td>
+                                <td style="padding: 12px; text-align: right; font-weight: bold;">S/ ${item.subtotal_cobro.toFixed(2)}</td>
                             </tr>`;
                     });
                 }
-                mostrarToast("✅ Liquidación generada con éxito.", "success");
-            } else { 
-                mostrarToast("❌ Error al liquidar la obra.", "danger"); 
-            }
-        } catch (error) { 
-            mostrarToast("❌ Error de conexión con el servidor.", "danger"); 
-        }
+                mostrarToast("✅ Liquidación generada.", "success");
+            } else { mostrarToast("❌ Error al liquidar.", "danger"); }
+        } catch (error) { mostrarToast("❌ Error de conexión.", "danger"); }
     });
 
     document.getElementById('btnDescargarPdf').addEventListener('click', function() {
@@ -663,76 +714,13 @@
         window.getSelection().removeAllRanges();
         const elemento = document.getElementById('ticket-pdf');
         const opciones = {
-            margin:       0.5,
-            filename:     'Liquidacion_Obra_' + document.getElementById('liqObraId').value + '.pdf',
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, scrollY: 0 },
-            jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+            margin: 0.5, filename: 'Liquidacion_Obra_' + document.getElementById('liqObraId').value + '.pdf',
+            image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, scrollY: 0 },
+            jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
         };
         html2pdf().set(opciones).from(elemento).save();
-        mostrarToast("📄 PDF descargado correctamente.", "success");
+        mostrarToast("📄 PDF descargado.", "success");
     });
-    // --- FILTROS AVANZADOS EN TIEMPO REAL ---
-    function filtrarKardex() {
-        const texto = document.getElementById('filtroTexto').value.toLowerCase();
-        const fechaInicio = document.getElementById('filtroFechaInicio').value;
-        const fechaFin = document.getElementById('filtroFechaFin').value;
-        const filas = document.querySelectorAll('#tabla-kardex tr');
-
-        filas.forEach(fila => {
-            // Ignorar la fila si dice "Cargando..." o "No hay movimientos"
-            if(fila.querySelector('td[colspan="6"]')) return; 
-
-            const celdas = fila.getElementsByTagName('td');
-            const fechaTexto = celdas[0].innerText; // Ej: 29/7/2026, 12:40:00
-            const obra = celdas[1].innerText.toLowerCase();
-            const producto = celdas[2].innerText.toLowerCase();
-            const tipo = celdas[3].innerText.toLowerCase();
-
-            // 1. Filtrar por Texto (Obra, Producto o Tipo)
-            const coincideTexto = obra.includes(texto) || producto.includes(texto) || tipo.includes(texto);
-
-            // 2. Filtrar por Fecha
-            let coincideFecha = true;
-            if (fechaInicio || fechaFin) {
-                // Extraemos solo la parte "DD/MM/YYYY" antes de la coma
-                const [fechaParte] = fechaTexto.split(','); 
-                const partes = fechaParte.trim().split('/');
-                
-                if(partes.length === 3) {
-                    // Formato: anio, mes (0-11), dia
-                    const fechaFila = new Date(partes[2], partes[1] - 1, partes[0]);
-                    
-                    if (fechaInicio) {
-                        // Forzamos a que inicie a las 00:00:00 del día local
-                        const [anio, mes, dia] = fechaInicio.split('-');
-                        const fInicio = new Date(anio, mes - 1, dia);
-                        if (fechaFila < fInicio) coincideFecha = false;
-                    }
-                    if (fechaFin) {
-                        // Forzamos a que termine a las 23:59:59 del día local
-                        const [anio, mes, dia] = fechaFin.split('-');
-                        const fFin = new Date(anio, mes - 1, dia, 23, 59, 59);
-                        if (fechaFila > fFin) coincideFecha = false;
-                    }
-                }
-            }
-
-            // Mostrar u ocultar la fila según el resultado
-            if (coincideTexto && coincideFecha) {
-                fila.style.display = '';
-            } else {
-                fila.style.display = 'none';
-            }
-        });
-    }
-
-    function limpiarFiltros() {
-        document.getElementById('filtroTexto').value = '';
-        document.getElementById('filtroFechaInicio').value = '';
-        document.getElementById('filtroFechaFin').value = '';
-        filtrarKardex(); // Vuelve a mostrar todo
-    }
 </script>
 </body>
 </html>
