@@ -38,8 +38,8 @@
         
         .table th { font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; background-color: #f8fafc; color: var(--text-muted); border-bottom: 2px solid var(--border-color); padding: 12px 16px; }
         .table td { border-bottom: 1px solid var(--border-color); color: #334155; padding: 12px 16px; vertical-align: middle; }
-        .form-control { border-radius: 4px; border: 1px solid var(--border-color); padding: 0.6rem 1rem; font-size: 0.925rem; background-color: #f8fafc; transition: all 0.2s; }
-        .form-control:focus { border-color: var(--sidebar-bg); background-color: white; box-shadow: none; }
+        .form-control, .form-select { border-radius: 4px; border: 1px solid var(--border-color); padding: 0.6rem 1rem; font-size: 0.925rem; background-color: #f8fafc; transition: all 0.2s; }
+        .form-control:focus, .form-select:focus { border-color: var(--sidebar-bg); background-color: white; box-shadow: none; }
         
         .toast { transition: opacity 0.3s ease; opacity: 0; display: none; border-radius: 8px; font-weight: 500; }
         .toast.show { opacity: 1; display: block; }
@@ -99,6 +99,7 @@
             <li onclick="window.scrollTo(0,0)" style="border-left: 4px solid var(--accent); background: rgba(255,255,255,0.05); color: white;"><i class="bi bi-grid-1x2-fill"></i> Panel Principal</li>
             <li onclick="document.getElementById('seccion-inventario').scrollIntoView({behavior: 'smooth'})"><i class="bi bi-boxes"></i> Inventario Físico</li>
             <li onclick="document.getElementById('seccion-kardex').scrollIntoView({behavior: 'smooth'})"><i class="bi bi-card-checklist"></i> Kardex / Historial</li>
+            <li onclick="document.getElementById('seccion-obras').scrollIntoView({behavior: 'smooth'})"><i class="bi bi-building-check"></i> Control Obras / Clientes</li>
             <li onclick="document.getElementById('seccion-operaciones').scrollIntoView({behavior: 'smooth'})"><i class="bi bi-truck"></i> Despachos a Obra</li>
             <li onclick="document.getElementById('seccion-interna').scrollIntoView({behavior: 'smooth'})"><i class="bi bi-gear-fill"></i> Operaciones Internas</li>
             <li id="menu-liquidacion" onclick="document.getElementById('seccion-liquidacion').scrollIntoView({behavior: 'smooth'})"><i class="bi bi-file-earmark-bar-graph"></i> Reportes y Cobros</li>
@@ -169,7 +170,8 @@
                         <table class="table table-hover align-middle mt-2">
                             <thead>
                                 <tr>
-                                    <th class="ps-3">Código / Producto</th>
+                                    <th class="ps-3">Código</th>
+                                    <th>Descripción de Equipo</th>
                                     <th>Almacén</th>
                                     <th>En Obra</th>
                                     <th>Mantenimiento</th>
@@ -195,6 +197,35 @@
             </div>
         </div>
 
+        <!-- CONTROL DE OBRAS (NUEVO) -->
+        <div class="row mb-4" id="seccion-obras">
+            <div class="col-12">
+                <div class="card p-4" style="border-left: 5px solid var(--accent);">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="m-0 fw-bold" style="color: var(--sidebar-bg);"><i class="bi bi-building-check me-2"></i>Directorio de Obras Activas (Alquilados)</h5>
+                        <button onclick="cargarObras()" class="btn btn-outline-custom btn-sm"><i class="bi bi-arrow-clockwise me-1"></i> Refrescar Datos</button>
+                    </div>
+                    <p class="small text-muted mb-4">Aquí puedes verificar exactamente qué materiales tiene retenidos en este instante cada obra/cliente.</p>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th style="width: 15%;">ID OBRA</th>
+                                    <th style="width: 25%;">CÓDIGO PRODUCTO</th>
+                                    <th style="width: 45%;">DESCRIPCIÓN</th>
+                                    <th style="width: 15%;" class="text-end">CANTIDAD EN OBRA</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-obras">
+                                <tr><td colspan="4" class="text-center text-muted py-3">Cargando estado de obras...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- KARDEX -->
         <div class="row mb-4" id="seccion-kardex">
             <div class="col-12">
@@ -202,7 +233,6 @@
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="m-0 fw-bold" style="color: var(--sidebar-bg);"><i class="bi bi-journals me-2"></i>Kardex - Registro de Movimientos</h5>
                         <div>
-                            <button onclick="cargarKardex()" class="btn btn-outline-custom btn-sm"><i class="bi bi-arrow-clockwise me-1"></i> Actualizar</button>
                             <button onclick="exportarExcel()" class="btn btn-primary btn-sm ms-2"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Exportar Excel</button>
                         </div>
                     </div>
@@ -258,8 +288,10 @@
                             <input type="number" class="form-control" id="obraId" placeholder="Ej: 102" required>
                         </div>
                         <div class="col-md-8">
-                            <label class="form-label fw-semibold small text-muted">CÓDIGO PRODUCTO</label>
-                            <input type="text" class="form-control" id="prodId" placeholder="Ej: PANEL-FENOLICO-122X244" required>
+                            <label class="form-label fw-semibold small text-muted">SELECCIONAR PRODUCTO</label>
+                            <select class="form-select" id="prodId" required>
+                                <option value="">Cargando catálogo...</option>
+                            </select>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold small text-muted">CANTIDAD A DESPACHAR</label>
@@ -278,11 +310,13 @@
                     <form id="form-devolucion" class="row g-3">
                         <div class="col-md-4">
                             <label class="form-label fw-semibold small text-muted">ID OBRA</label>
-                            <input type="number" class="form-control" id="devObraId" required>
+                            <input type="number" class="form-control" id="devObraId" placeholder="Ej: 102" required>
                         </div>
                         <div class="col-md-8">
-                            <label class="form-label fw-semibold small text-muted">CÓDIGO PRODUCTO</label>
-                            <input type="text" class="form-control" id="devProdId" required>
+                            <label class="form-label fw-semibold small text-muted">SELECCIONAR PRODUCTO</label>
+                            <select class="form-select" id="devProdId" required>
+                                <option value="">Cargando catálogo...</option>
+                            </select>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold small text-success">ÓPTIMOS (BUENA)</label>
@@ -297,25 +331,27 @@
                             <input type="number" class="form-control" id="devPerdida" value="0" min="0" required>
                         </div>
                         <div class="col-12 mt-3">
-                            <button type="submit" class="btn btn-warning w-100 py-2 fw-semibold"><i class="bi bi-check-circle me-2"></i>Procesar Devolución Física</button>
+                            <button type="submit" class="btn btn-warning w-100 py-2 fw-semibold"><i class="bi bi-check-circle me-2"></i>Procesar Devolución</button>
                         </div>
                     </form>
                 </div>
             </div>
         </div>
 
-        <!-- OPERACIONES INTERNAS (Mantenimiento y Nuevos Productos) -->
+        <!-- OPERACIONES INTERNAS -->
         <div class="row g-4 mb-4" id="seccion-interna">
             <div class="col-lg-6">
                 <div class="card h-100 p-4" style="background-color: #f8fafc;">
                     <h5 class="fw-bold" style="color: var(--sidebar-bg); margin-bottom: 20px;"><i class="bi bi-wrench-adjustable me-2"></i>Retorno de Reparación</h5>
                     <p class="small text-muted mb-3">Mueve los equipos arreglados del estado "En Mantenimiento" hacia el "Stock en Almacén".</p>
                     <form id="form-reparacion" class="row g-3">
-                        <div class="col-md-7">
-                            <label class="form-label fw-semibold small text-muted">CÓDIGO PRODUCTO</label>
-                            <input type="text" class="form-control" id="repProdId" required>
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold small text-muted">SELECCIONAR PRODUCTO</label>
+                            <select class="form-select" id="repProdId" required>
+                                <option value="">Cargando catálogo...</option>
+                            </select>
                         </div>
-                        <div class="col-md-5">
+                        <div class="col-md-4">
                             <label class="form-label fw-semibold small text-muted">CANT. REPARADA</label>
                             <input type="number" class="form-control" id="repCant" min="1" required>
                         </div>
@@ -329,22 +365,26 @@
             <div class="col-lg-6">
                 <div class="card h-100 p-4" style="background-color: #f8fafc;">
                     <h5 class="fw-bold" style="color: var(--sidebar-bg); margin-bottom: 20px;"><i class="bi bi-box-seam me-2"></i>Registrar Nuevo Producto</h5>
-                    <p class="small text-muted mb-3">Crea un nuevo ítem en la base de datos con stock inicial de 0.</p>
+                    <p class="small text-muted mb-3">Crea un nuevo ítem en la base de datos e ingresa su stock inicial.</p>
                     <form id="form-nuevo-producto" class="row g-3">
-                        <div class="col-md-12">
+                        <div class="col-md-6">
                             <label class="form-label fw-semibold small text-muted">CÓDIGO ÚNICO</label>
                             <input type="text" class="form-control" id="newId" placeholder="Ej: PUNTAL-3M" required>
                         </div>
-                        <div class="col-md-7">
+                        <div class="col-md-6">
                             <label class="form-label fw-semibold small text-muted">NOMBRE / DESCRIPCIÓN</label>
                             <input type="text" class="form-control" id="newNombre" placeholder="Puntal Metálico 3 Metros" required>
                         </div>
-                        <div class="col-md-5">
+                        <div class="col-md-6">
                             <label class="form-label fw-semibold small text-muted">VALOR REPOSICIÓN (S/)</label>
                             <input type="number" class="form-control" id="newPrecio" step="0.01" placeholder="Ej: 120.50" required>
                         </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small text-success">CANTIDAD INICIAL (STOCK)</label>
+                            <input type="number" class="form-control" id="newStock" value="0" min="0" required>
+                        </div>
                         <div class="col-12 mt-3">
-                            <button type="submit" class="btn btn-primary w-100 py-2"><i class="bi bi-plus-circle me-2"></i>Crear Producto</button>
+                            <button type="submit" class="btn btn-primary w-100 py-2"><i class="bi bi-plus-circle me-2"></i>Crear e Ingresar Producto</button>
                         </div>
                     </form>
                 </div>
@@ -361,7 +401,7 @@
                             <label class="form-label fw-semibold small text-muted">ID DE OBRA A EVALUAR</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light"><i class="bi bi-building"></i></span>
-                                <input type="number" class="form-control" id="liqObraId" placeholder="Ej: 102" required>
+                                <input type="number" class="form-control" id="liqObraId" placeholder="Ej: 1" required>
                             </div>
                         </div>
                         <div class="col-md-3">
@@ -455,7 +495,9 @@
                 document.getElementById('login-screen').style.cssText = 'display: none !important;';
                 document.getElementById('dashboard-wrapper').style.display = 'flex'; 
                 
-                cargarInventario(); cargarKardex();
+                cargarInventario(); 
+                cargarKardex();
+                cargarObras();
             } else { document.getElementById('error-msg').style.display = 'block'; }
         } catch (error) { alert("Error conectando al servidor."); } finally { btn.disabled = false; btn.innerHTML = 'Ingresar al Sistema'; }
     });
@@ -498,6 +540,17 @@
         });
     }
 
+    // --- NUEVO: LLENAR LOS DROPDOWNS (<SELECT>) ---
+    function llenarSelectsProductos(inventario) {
+        let optionsHtml = '<option value="">Seleccione un producto del catálogo...</option>';
+        inventario.forEach(item => {
+            optionsHtml += `<option value="${item.id_producto}">[${item.id_producto}] - ${item.nombre}</option>`;
+        });
+        document.getElementById('prodId').innerHTML = optionsHtml;
+        document.getElementById('devProdId').innerHTML = optionsHtml;
+        document.getElementById('repProdId').innerHTML = optionsHtml;
+    }
+
     async function cargarInventario() {
         try {
             const respuesta = await fetch('https://sistema-encofrados.onrender.com/dashboard/inventario/?t=' + Date.now(), { headers: obtenerHeaders() });
@@ -505,15 +558,47 @@
             const datos = await respuesta.json();
             const tabla = document.getElementById('tabla-inventario'); tabla.innerHTML = ''; 
             
+            // Llenamos los menús desplegables con la data
+            llenarSelectsProductos(datos);
+
             let tA = 0, tO = 0, tM = 0;
             datos.forEach(item => {
-                tabla.innerHTML += `<tr><td class="ps-3 fw-bold text-dark">${item.id_producto}</td><td>${item.cantidad_almacen}</td><td style="color: var(--accent); font-weight: bold;">${item.cantidad_en_obra}</td><td>${item.cantidad_mantenimiento}</td></tr>`;
+                tabla.innerHTML += `<tr><td class="ps-3 fw-bold text-dark">${item.id_producto}</td><td>${item.nombre}</td><td>${item.cantidad_almacen}</td><td style="color: var(--accent); font-weight: bold;">${item.cantidad_en_obra}</td><td>${item.cantidad_mantenimiento}</td></tr>`;
                 tA += item.cantidad_almacen; tO += item.cantidad_en_obra; tM += item.cantidad_mantenimiento;
             });
             document.getElementById('kpi-almacen').innerText = tA; document.getElementById('kpi-obra').innerText = tO; document.getElementById('kpi-mant').innerText = tM;
             document.getElementById('kpi-util').innerText = (tA + tO + tM) > 0 ? ((tO / (tA + tO + tM)) * 100).toFixed(1) + "%" : "0%";
             actualizarGrafico(tA, tO, tM);
         } catch (error) { console.error(error); }
+    }
+
+    // --- NUEVO: CARGAR EL ESTADO DE LAS OBRAS ---
+    async function cargarObras() {
+        try {
+            const res = await fetch('https://sistema-encofrados.onrender.com/clientes/estado/?t=' + Date.now(), { headers: obtenerHeaders() });
+            if (!res.ok) return;
+            const datos = await res.json();
+            const tabla = document.getElementById('tabla-obras');
+            tabla.innerHTML = '';
+            
+            if(datos.length === 0) {
+                tabla.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">No hay materiales alquilados actualmente en ninguna obra.</td></tr>';
+                return;
+            }
+
+            datos.forEach(obra => {
+                obra.equipos.forEach((equipo, index) => {
+                    // Solo mostramos el ID de la obra en la primera fila de esa obra
+                    let celdaObra = index === 0 ? `<td rowspan="${obra.equipos.length}" class="fw-bold align-middle" style="background:#f8fafc; border-right: 1px solid #e2e8f0;">Obra #${obra.id_obra}</td>` : '';
+                    tabla.innerHTML += `<tr>
+                        ${celdaObra}
+                        <td><span class="badge bg-light text-dark border">${equipo.codigo}</span></td>
+                        <td class="text-muted small">${equipo.nombre}</td>
+                        <td class="text-end fw-bold" style="color: var(--accent);">${equipo.cantidad}</td>
+                    </tr>`;
+                });
+            });
+        } catch(error) { console.error(error); }
     }
 
     async function cargarKardex() {
@@ -542,7 +627,7 @@
         
         const nuevaFila = `<tr style="background-color: #e0f2fe; transition: background-color 2s;"><td class="small text-muted">${new Date().toLocaleString('es-PE')}</td><td><strong>${obra || 'Almacén'}</strong></td><td>${producto}</td><td>${badge}</td><td class="small text-muted">Procesado</td><td class="text-end fw-bold">${cantidad}</td></tr>`;
         tabla.insertAdjacentHTML('afterbegin', nuevaFila);
-        setTimeout(() => { cargarInventario(); cargarKardex(); }, 1500);
+        setTimeout(() => { cargarInventario(); cargarKardex(); cargarObras(); }, 1500);
     }
 
     document.getElementById('form-despacho').addEventListener('submit', async function(e) {
@@ -550,7 +635,7 @@
         const idObra = parseInt(document.getElementById('obraId').value); const idProd = document.getElementById('prodId').value; const cant = parseInt(document.getElementById('cantId').value);
         try {
             const res = await fetch('https://sistema-encofrados.onrender.com/despachos/', { method: 'POST', headers: { 'Content-Type': 'application/json', ...obtenerHeaders() }, body: JSON.stringify({ id_obra: idObra, id_producto: idProd, cantidad: cant }) });
-            if (res.ok) { mostrarToast("<i class='bi bi-check-circle'></i> Despacho registrado"); document.getElementById('cantId').value = ''; inyectarKardexDOM(idObra, idProd, 'SALIDA', cant); }
+            if (res.ok) { mostrarToast("<i class='bi bi-check-circle'></i> Despacho registrado"); document.getElementById('cantId').value = ''; document.getElementById('prodId').value = ''; inyectarKardexDOM(idObra, idProd, 'SALIDA', cant); }
             else { const err = await res.json(); mostrarToast("<i class='bi bi-x-circle'></i> " + (err.detail || "Error"), "danger"); }
         } catch (error) { mostrarToast("<i class='bi bi-wifi-off'></i> Error de conexión", "danger"); } finally { btn.disabled = false; btn.innerHTML = txt; }
     });
@@ -561,17 +646,16 @@
         const cB = parseInt(document.getElementById('devBuena').value) || 0; const cM = parseInt(document.getElementById('devMant').value) || 0; const cP = parseInt(document.getElementById('devPerdida').value) || 0;
         try {
             const res = await fetch('https://sistema-encofrados.onrender.com/devoluciones/', { method: 'POST', headers: { 'Content-Type': 'application/json', ...obtenerHeaders() }, body: JSON.stringify({ id_obra: idObra, id_producto: idProd, cantidad_buena: cB, cantidad_mantenimiento: cM, cantidad_perdida: cP }) });
-            if (res.ok) { mostrarToast("<i class='bi bi-check-circle'></i> Devolución completada"); document.getElementById('devBuena').value='0'; document.getElementById('devMant').value='0'; document.getElementById('devPerdida').value='0'; inyectarKardexDOM(idObra, idProd, 'DEVOLUCIÓN', (cB+cM+cP)); }
+            if (res.ok) { mostrarToast("<i class='bi bi-check-circle'></i> Devolución completada"); document.getElementById('devBuena').value='0'; document.getElementById('devMant').value='0'; document.getElementById('devPerdida').value='0'; document.getElementById('devProdId').value=''; inyectarKardexDOM(idObra, idProd, 'DEVOLUCIÓN', (cB+cM+cP)); }
             else { const err = await res.json(); mostrarToast("<i class='bi bi-x-circle'></i> " + (err.detail || "Error"), "danger"); }
         } catch (error) { mostrarToast("<i class='bi bi-wifi-off'></i> Error", "danger"); } finally { btn.disabled = false; btn.innerHTML = txt; }
     });
 
-    // --- NUEVAS FUNCIONES: PRODUCTOS Y REPARACIÓN ---
     document.getElementById('form-nuevo-producto').addEventListener('submit', async function(e) {
         e.preventDefault(); const btn = this.querySelector('button[type="submit"]'); const txt = btn.innerHTML; btn.disabled = true; btn.innerHTML = `Registrando...`;
-        const idProd = document.getElementById('newId').value; const nom = document.getElementById('newNombre').value; const precio = parseFloat(document.getElementById('newPrecio').value);
+        const idProd = document.getElementById('newId').value; const nom = document.getElementById('newNombre').value; const precio = parseFloat(document.getElementById('newPrecio').value); const stock = parseInt(document.getElementById('newStock').value);
         try {
-            const res = await fetch('https://sistema-encofrados.onrender.com/productos/', { method: 'POST', headers: { 'Content-Type': 'application/json', ...obtenerHeaders() }, body: JSON.stringify({ id_producto: idProd, nombre: nom, costo_reposicion: precio }) });
+            const res = await fetch('https://sistema-encofrados.onrender.com/productos/', { method: 'POST', headers: { 'Content-Type': 'application/json', ...obtenerHeaders() }, body: JSON.stringify({ id_producto: idProd, nombre: nom, costo_reposicion: precio, cantidad_inicial: stock }) });
             if (res.ok) { mostrarToast("<i class='bi bi-box-seam'></i> Producto catalogado con éxito"); this.reset(); cargarInventario(); }
             else { const err = await res.json(); mostrarToast("<i class='bi bi-x-circle'></i> " + (err.detail || "Error"), "danger"); }
         } catch (error) { mostrarToast("Error de conexión", "danger"); } finally { btn.disabled = false; btn.innerHTML = txt; }
@@ -587,7 +671,6 @@
         } catch (error) { mostrarToast("Error de conexión", "danger"); } finally { btn.disabled = false; btn.innerHTML = txt; }
     });
 
-    // --- LIQUIDACIÓN Y EXCEL ---
     document.getElementById('form-liquidacion').addEventListener('submit', async function(e) {
         e.preventDefault(); const idObra = document.getElementById('liqObraId').value;
         try {
