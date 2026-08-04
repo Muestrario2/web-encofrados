@@ -48,7 +48,12 @@
         .sidebar { width: 260px; background-color: var(--sidebar-bg); color: white; display: flex; flex-direction: column; padding: 30px 0; position: fixed; height: 100vh; top: 0; left: 0; z-index: 1000;}
         .nav-links { list-style: none; padding: 0; margin: 0; }
         .nav-links li { padding: 15px 30px; font-size: 0.95rem; color: #cbd5e0; display: flex; align-items: center; gap: 15px; cursor: pointer; transition: 0.3s; }
-        .nav-links li:hover { background-color: rgba(255,255,255,0.05); color: white; border-left: 4px solid var(--accent); }
+        .nav-links li:hover, .nav-links li.active { background-color: rgba(255,255,255,0.05); color: white; border-left: 4px solid var(--accent); }
+        
+        /* MAGIA SPA: Clases para ocultar/mostrar pantallas */
+        .app-view { display: none; animation: fadeIn 0.4s ease-in-out; }
+        .app-view.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
@@ -66,7 +71,7 @@
                 <label class="form-label text-muted small fw-bold">ID DE USUARIO</label>
                 <div class="input-group">
                     <span class="input-group-text bg-light border-end-0"><i class="bi bi-person text-muted"></i></span>
-                    <input type="text" id="userInput" class="form-control border-start-0" placeholder="Código de acceso" required>
+                    <input type="text" id="userInput" class="form-control border-start-0" placeholder="Ej: admin" required>
                 </div>
             </div>
             <div class="mb-4">
@@ -95,14 +100,14 @@
             <p id="lblRolSide" style="font-size: 0.8rem; color: #a0aec0; margin-top: 5px; margin-bottom: 0;">ROL</p>
         </div>
         
-        <ul class="nav-links">
-            <li onclick="window.scrollTo(0,0)" style="border-left: 4px solid var(--accent); background: rgba(255,255,255,0.05); color: white;"><i class="bi bi-grid-1x2-fill"></i> Panel Principal</li>
-            <li onclick="document.getElementById('seccion-inventario').scrollIntoView({behavior: 'smooth'})"><i class="bi bi-boxes"></i> Inventario Físico</li>
-            <li onclick="document.getElementById('seccion-kardex').scrollIntoView({behavior: 'smooth'})"><i class="bi bi-card-checklist"></i> Kardex / Historial</li>
-            <li onclick="document.getElementById('seccion-obras').scrollIntoView({behavior: 'smooth'})"><i class="bi bi-building-check"></i> Control Obras / Clientes</li>
-            <li onclick="document.getElementById('seccion-operaciones').scrollIntoView({behavior: 'smooth'})"><i class="bi bi-truck"></i> Despachos a Obra</li>
-            <li onclick="document.getElementById('seccion-interna').scrollIntoView({behavior: 'smooth'})"><i class="bi bi-gear-fill"></i> Operaciones Internas</li>
-            <li id="menu-liquidacion" onclick="document.getElementById('seccion-liquidacion').scrollIntoView({behavior: 'smooth'})"><i class="bi bi-file-earmark-bar-graph"></i> Reportes y Cobros</li>
+        <ul class="nav-links" id="sidebar-menu">
+            <li class="active" onclick="mostrarVista('view-dashboard', this)"><i class="bi bi-grid-1x2-fill"></i> Panel Principal</li>
+            <li onclick="mostrarVista('view-obras', this)"><i class="bi bi-building-check"></i> Directorio Obras / Clientes</li>
+            <li onclick="mostrarVista('view-inventario', this)"><i class="bi bi-boxes"></i> Catálogo e Inventario</li>
+            <li onclick="mostrarVista('view-operaciones', this)"><i class="bi bi-truck"></i> Despachos y Devolución</li>
+            <li onclick="mostrarVista('view-kardex', this)"><i class="bi bi-card-checklist"></i> Kardex / Historial</li>
+            <li onclick="mostrarVista('view-interna', this)"><i class="bi bi-gear-fill"></i> Operaciones Internas</li>
+            <li id="menu-liquidacion" onclick="mostrarVista('view-liquidacion', this)"><i class="bi bi-file-earmark-bar-graph"></i> Reportes y Liquidación</li>
         </ul>
         
         <div style="margin-top: auto; padding: 0 30px;">
@@ -111,340 +116,364 @@
     </div>
 
     <!-- CONTENIDO CENTRAL -->
-    <div class="main-content" style="flex: 1; margin-left: 260px; padding: 30px 40px;" id="dashboard-screen">
+    <div class="main-content" style="flex: 1; margin-left: 260px; padding: 30px 40px;">
         
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 style="font-size: 1.4rem; font-weight: 500; color: #4a5568; margin: 0;">Dashboard General</h2>
-            <div style="font-size: 1.2rem; color: var(--text-muted);"><i class="bi bi-calendar3 me-2"></i><span id="fecha-actual"></span></div>
+        <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+            <h2 id="titulo-vista" style="font-size: 1.5rem; font-weight: 600; color: var(--sidebar-bg); margin: 0;">Panel Principal</h2>
+            <div style="font-size: 1rem; color: var(--text-muted);"><i class="bi bi-calendar3 me-2"></i><span id="fecha-actual"></span></div>
         </div>
 
-        <!-- KPIS -->
-        <div class="row g-3 mb-4" id="seccion-kpis">
-            <div class="col-xl-3 col-md-6">
-                <div class="card p-4 kpi-card success" style="background: var(--sidebar-bg); color: white;">
-                    <div class="small fw-bold text-uppercase" style="color: #cbd5e0;">Stock en Almacén</div>
-                    <div class="d-flex align-items-baseline justify-content-between mt-2">
-                        <h3 class="fw-bold mb-0" id="kpi-almacen" style="font-size: 2.2rem;">0</h3>
-                        <span style="font-size: 1.5rem; opacity: 0.8;"><i class="bi bi-house-door-fill"></i></span>
+        <!-- VISTA 1: DASHBOARD -->
+        <div id="view-dashboard" class="app-view active">
+            <div class="row g-3 mb-4">
+                <div class="col-xl-3 col-md-6">
+                    <div class="card p-4 kpi-card success" style="background: var(--sidebar-bg); color: white;">
+                        <div class="small fw-bold text-uppercase" style="color: #cbd5e0;">Stock en Almacén</div>
+                        <div class="d-flex align-items-baseline justify-content-between mt-2">
+                            <h3 class="fw-bold mb-0" id="kpi-almacen" style="font-size: 2.2rem;">0</h3>
+                            <span style="font-size: 1.5rem; opacity: 0.8;"><i class="bi bi-house-door-fill"></i></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <div class="card p-4 kpi-card">
+                        <div class="text-muted small fw-bold text-uppercase">Equipos en Obra</div>
+                        <div class="d-flex align-items-baseline justify-content-between mt-2">
+                            <h3 class="fw-bold mb-0" id="kpi-obra" style="font-size: 2.2rem; color: var(--sidebar-bg);">0</h3>
+                            <span style="font-size: 1.5rem; color: var(--accent);"><i class="bi bi-cone-striped"></i></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <div class="card p-4 kpi-card warning">
+                        <div class="text-muted small fw-bold text-uppercase">En Reparación</div>
+                        <div class="d-flex align-items-baseline justify-content-between mt-2">
+                            <h3 class="fw-bold mb-0" id="kpi-mant" style="font-size: 2.2rem; color: var(--sidebar-bg);">0</h3>
+                            <span style="font-size: 1.5rem; color: var(--accent);"><i class="bi bi-tools"></i></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6">
+                    <div class="card p-4 kpi-card danger">
+                        <div class="text-muted small fw-bold text-uppercase">Tasa Utilización</div>
+                        <div class="d-flex align-items-baseline justify-content-between mt-2">
+                            <h3 class="fw-bold mb-0" id="kpi-util" style="font-size: 2.2rem; color: var(--sidebar-bg);">0%</h3>
+                            <span style="font-size: 1.5rem; color: #94a3b8;"><i class="bi bi-pie-chart-fill"></i></span>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-xl-3 col-md-6">
-                <div class="card p-4 kpi-card">
-                    <div class="text-muted small fw-bold text-uppercase">Equipos en Obra</div>
-                    <div class="d-flex align-items-baseline justify-content-between mt-2">
-                        <h3 class="fw-bold mb-0" id="kpi-obra" style="font-size: 2.2rem; color: var(--sidebar-bg);">0</h3>
-                        <span style="font-size: 1.5rem; color: var(--accent);"><i class="bi bi-cone-striped"></i></span>
-                    </div>
-                </div>
-            </div>
-            <div class="col-xl-3 col-md-6">
-                <div class="card p-4 kpi-card warning">
-                    <div class="text-muted small fw-bold text-uppercase">En Reparación</div>
-                    <div class="d-flex align-items-baseline justify-content-between mt-2">
-                        <h3 class="fw-bold mb-0" id="kpi-mant" style="font-size: 2.2rem; color: var(--sidebar-bg);">0</h3>
-                        <span style="font-size: 1.5rem; color: var(--accent);"><i class="bi bi-tools"></i></span>
-                    </div>
-                </div>
-            </div>
-            <div class="col-xl-3 col-md-6">
-                <div class="card p-4 kpi-card danger">
-                    <div class="text-muted small fw-bold text-uppercase">Tasa de Utilización</div>
-                    <div class="d-flex align-items-baseline justify-content-between mt-2">
-                        <h3 class="fw-bold mb-0" id="kpi-util" style="font-size: 2.2rem; color: var(--sidebar-bg);">0%</h3>
-                        <span style="font-size: 1.5rem; color: #94a3b8;"><i class="bi bi-pie-chart-fill"></i></span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- TABLA INVENTARIO -->
-        <div class="row g-4 mb-4" id="seccion-inventario">
-            <div class="col-lg-8">
-                <div class="card h-100 p-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="fw-bold mb-0" style="color: var(--sidebar-bg); font-weight: 500;"><i class="bi bi-table me-2"></i>Estado Físico del Inventario</h5>
-                        <button onclick="cargarInventario()" class="btn btn-outline-custom btn-sm"><i class="bi bi-arrow-clockwise me-1"></i> Sincronizar Stock</button>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mt-2">
-                            <thead>
-                                <tr>
-                                    <th class="ps-3">Código</th>
-                                    <th>Descripción de Equipo</th>
-                                    <th>Almacén</th>
-                                    <th>En Obra</th>
-                                    <th>Mantenimiento</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tabla-inventario"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-lg-4">
-                <div class="card h-100 p-4 d-flex flex-column align-items-center justify-content-center">
-                    <div style="position: relative; height: 180px; width: 100%; margin-bottom: 20px;">
-                        <canvas id="graficoInventario"></canvas>
-                    </div>
-                    <div class="w-100 text-center" style="font-size: 0.85rem; color: var(--text-muted);">
-                        <div class="mb-2 pb-2 border-bottom">Distribución global de equipos</div>
-                        <div class="mb-2 pb-2 border-bottom">Actualizado en tiempo real</div>
-                        <button onclick="window.print()" class="btn btn-primary w-100 mt-2 py-2"><i class="bi bi-printer me-2"></i>Imprimir Reporte</button>
+            <div class="row">
+                <div class="col-lg-6 mx-auto">
+                    <div class="card p-4 d-flex flex-column align-items-center justify-content-center">
+                        <h5 class="fw-bold mb-4 w-100 text-center" style="color: var(--sidebar-bg);">Distribución Global de Activos</h5>
+                        <div style="position: relative; height: 220px; width: 100%;">
+                            <canvas id="graficoInventario"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- CONTROL DE OBRAS (NUEVO) -->
-        <div class="row mb-4" id="seccion-obras">
-            <div class="col-12">
-                <div class="card p-4" style="border-left: 5px solid var(--accent);">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="m-0 fw-bold" style="color: var(--sidebar-bg);"><i class="bi bi-building-check me-2"></i>Directorio de Obras Activas (Alquilados)</h5>
-                        <button onclick="cargarObras()" class="btn btn-outline-custom btn-sm"><i class="bi bi-arrow-clockwise me-1"></i> Refrescar Datos</button>
-                    </div>
-                    <p class="small text-muted mb-4">Aquí puedes verificar exactamente qué materiales tiene retenidos en este instante cada obra/cliente.</p>
-                    
-                    <div class="table-responsive">
-                        <table class="table table-sm align-middle">
-                            <thead>
-                                <tr>
-                                    <th style="width: 15%;">ID OBRA</th>
-                                    <th style="width: 25%;">CÓDIGO PRODUCTO</th>
-                                    <th style="width: 45%;">DESCRIPCIÓN</th>
-                                    <th style="width: 15%;" class="text-end">CANTIDAD EN OBRA</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tabla-obras">
-                                <tr><td colspan="4" class="text-center text-muted py-3">Cargando estado de obras...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- KARDEX -->
-        <div class="row mb-4" id="seccion-kardex">
-            <div class="col-12">
-                <div class="card p-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="m-0 fw-bold" style="color: var(--sidebar-bg);"><i class="bi bi-journals me-2"></i>Kardex - Registro de Movimientos</h5>
-                        <div>
-                            <button onclick="exportarExcel()" class="btn btn-primary btn-sm ms-2"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Exportar Excel</button>
-                        </div>
-                    </div>
-
-                    <!-- FILTROS -->
-                    <div class="row g-2 mb-3 p-3 rounded" style="background: #f8fafc; border: 1px solid #e2e8f0;">
-                        <div class="col-md-5">
-                            <label class="form-label small text-muted fw-bold mb-1"><i class="bi bi-search me-1"></i> Búsqueda general</label>
-                            <input type="text" id="filtroTexto" class="form-control form-control-sm" placeholder="Buscar por ID de obra, código de producto o tipo..." onkeyup="filtrarKardex()">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small text-muted fw-bold mb-1">Fecha Inicio</label>
-                            <input type="date" id="filtroFechaInicio" class="form-control form-control-sm" onchange="filtrarKardex()">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small text-muted fw-bold mb-1">Fecha Fin</label>
-                            <input type="date" id="filtroFechaFin" class="form-control form-control-sm" onchange="filtrarKardex()">
-                        </div>
-                        <div class="col-md-1 d-flex align-items-end">
-                            <button class="btn btn-outline-custom btn-sm w-100 mb-1" onclick="limpiarFiltros()" title="Limpiar filtros"><i class="bi bi-eraser"></i></button>
-                        </div>
-                    </div>
-
-                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
-                        <table class="table table-sm align-middle">
-                            <thead>
-                                <tr>
-                                    <th>Fecha / Hora</th>
-                                    <th>Ref. Obra</th>
-                                    <th>Código Producto</th>
-                                    <th>Operación</th>
-                                    <th>Responsable</th>
-                                    <th class="text-end">Cant.</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tabla-kardex">
-                                <tr><td colspan="6" class="text-center text-muted py-3">Cargando datos del servidor...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- OPERACIONES LOGÍSTICAS -->
-        <div class="row g-4 mb-4" id="seccion-operaciones">
-            <div class="col-lg-6">
-                <div class="card h-100 p-4">
-                    <h5 class="fw-bold" style="color: var(--sidebar-bg); margin-bottom: 20px;"><i class="bi bi-truck me-2"></i>Registrar Salida a Obra</h5>
-                    <form id="form-despacho" class="row g-3">
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold small text-muted">ID OBRA</label>
-                            <input type="number" class="form-control" id="obraId" placeholder="Ej: 102" required>
-                        </div>
-                        <div class="col-md-8">
-                            <label class="form-label fw-semibold small text-muted">SELECCIONAR PRODUCTO</label>
-                            <select class="form-select" id="prodId" required>
-                                <option value="">Cargando catálogo...</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold small text-muted">CANTIDAD A DESPACHAR</label>
-                            <input type="number" class="form-control" id="cantId" placeholder="Ej: 50" required>
-                        </div>
-                        <div class="col-md-6 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary w-100 py-2"><i class="bi bi-send-check me-2"></i>Procesar Salida</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <div class="col-lg-6">
-                <div class="card h-100 p-4 border-top" style="border-top: 4px solid var(--accent) !important;">
-                    <h5 class="fw-bold" style="color: var(--sidebar-bg); margin-bottom: 20px;"><i class="bi bi-arrow-return-left me-2"></i>Registrar Devolución</h5>
-                    <form id="form-devolucion" class="row g-3">
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold small text-muted">ID OBRA</label>
-                            <input type="number" class="form-control" id="devObraId" placeholder="Ej: 102" required>
-                        </div>
-                        <div class="col-md-8">
-                            <label class="form-label fw-semibold small text-muted">SELECCIONAR PRODUCTO</label>
-                            <select class="form-select" id="devProdId" required>
-                                <option value="">Cargando catálogo...</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold small text-success">ÓPTIMOS (BUENA)</label>
-                            <input type="number" class="form-control" id="devBuena" value="0" min="0" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold small text-warning">A REPARACIÓN</label>
-                            <input type="number" class="form-control" id="devMant" value="0" min="0" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold small text-danger">EXTRAVÍO / DAÑO</label>
-                            <input type="number" class="form-control" id="devPerdida" value="0" min="0" required>
-                        </div>
-                        <div class="col-12 mt-3">
-                            <button type="submit" class="btn btn-warning w-100 py-2 fw-semibold"><i class="bi bi-check-circle me-2"></i>Procesar Devolución</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- OPERACIONES INTERNAS -->
-        <div class="row g-4 mb-4" id="seccion-interna">
-            <div class="col-lg-6">
-                <div class="card h-100 p-4" style="background-color: #f8fafc;">
-                    <h5 class="fw-bold" style="color: var(--sidebar-bg); margin-bottom: 20px;"><i class="bi bi-wrench-adjustable me-2"></i>Retorno de Reparación</h5>
-                    <p class="small text-muted mb-3">Mueve los equipos arreglados del estado "En Mantenimiento" hacia el "Stock en Almacén".</p>
-                    <form id="form-reparacion" class="row g-3">
-                        <div class="col-md-8">
-                            <label class="form-label fw-semibold small text-muted">SELECCIONAR PRODUCTO</label>
-                            <select class="form-select" id="repProdId" required>
-                                <option value="">Cargando catálogo...</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold small text-muted">CANT. REPARADA</label>
-                            <input type="number" class="form-control" id="repCant" min="1" required>
-                        </div>
-                        <div class="col-12 d-flex align-items-end mt-3">
-                            <button type="submit" class="btn btn-outline-custom w-100 py-2" style="border-color: var(--sidebar-bg); color: var(--sidebar-bg); font-weight: 500;"><i class="bi bi-check2-all me-2"></i>Reintegrar a Stock Disponible</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <div class="col-lg-6">
-                <div class="card h-100 p-4" style="background-color: #f8fafc;">
-                    <h5 class="fw-bold" style="color: var(--sidebar-bg); margin-bottom: 20px;"><i class="bi bi-box-seam me-2"></i>Registrar Nuevo Producto</h5>
-                    <p class="small text-muted mb-3">Crea un nuevo ítem en la base de datos e ingresa su stock inicial.</p>
-                    <form id="form-nuevo-producto" class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold small text-muted">CÓDIGO ÚNICO</label>
-                            <input type="text" class="form-control" id="newId" placeholder="Ej: PUNTAL-3M" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold small text-muted">NOMBRE / DESCRIPCIÓN</label>
-                            <input type="text" class="form-control" id="newNombre" placeholder="Puntal Metálico 3 Metros" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold small text-muted">VALOR REPOSICIÓN (S/)</label>
-                            <input type="number" class="form-control" id="newPrecio" step="0.01" placeholder="Ej: 120.50" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold small text-success">CANTIDAD INICIAL (STOCK)</label>
-                            <input type="number" class="form-control" id="newStock" value="0" min="0" required>
-                        </div>
-                        <div class="col-12 mt-3">
-                            <button type="submit" class="btn btn-primary w-100 py-2"><i class="bi bi-plus-circle me-2"></i>Crear e Ingresar Producto</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- LIQUIDACIÓN -->
-        <div class="row" id="seccion-liquidacion">
-            <div class="col-12">
-                <div class="card p-4">
-                    <h5 class="fw-bold" style="color: var(--sidebar-bg); margin-bottom: 20px;"><i class="bi bi-file-earmark-ruled me-2"></i>Módulo Financiero y Liquidaciones</h5>
-                    <form id="form-liquidacion" class="row g-3 align-items-end mt-1">
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold small text-muted">ID DE OBRA A EVALUAR</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-light"><i class="bi bi-building"></i></span>
-                                <input type="number" class="form-control" id="liqObraId" placeholder="Ej: 1" required>
+        <!-- VISTA 2: DIRECTORIO DE OBRAS -->
+        <div id="view-obras" class="app-view">
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <div class="card h-100 p-4 border-top" style="border-top: 4px solid var(--sidebar-bg) !important;">
+                        <h5 class="fw-bold" style="color: var(--sidebar-bg); margin-bottom: 20px;"><i class="bi bi-building-add me-2"></i>Registrar Nueva Obra</h5>
+                        <form id="form-nueva-obra" class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label fw-semibold small text-muted">NOMBRE DEL PROYECTO / CLIENTE</label>
+                                <input type="text" class="form-control" id="obNombre" placeholder="Ej: Consorcio Constructora Lima" required>
                             </div>
-                        </div>
-                        <div class="col-md-3">
-                            <button type="submit" class="btn btn-primary w-100 py-2"><i class="bi bi-calculator me-2"></i>Procesar Cálculo</button>
-                        </div>
-                    </form>
-                    
-                    <div id="resultado-liquidacion" class="mt-4" style="display: none;">
-                        <div id="ticket-pdf" style="background-color: #ffffff; padding: 40px; border: 1px solid #e2e8f0; font-family: 'Inter', sans-serif;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--sidebar-bg); padding-bottom: 20px; margin-bottom: 25px;">
-                                <div>
-                                    <h2 style="color: var(--sidebar-bg); font-weight: 800; margin: 0; font-size: 22px;">INMOFORMWORK S.A.C.</h2>
-                                    <p style="margin: 4px 0 0; color: #64748b; font-size: 13px;">Reporte de Penalidades y Extravíos</p>
-                                </div>
-                                <div style="text-align: right;">
-                                    <h4 style="margin: 0; color: #0f172a; font-size: 16px; font-weight: 700;">LIQUIDACIÓN TÉCNICA</h4>
-                                    <p style="margin: 2px 0 0; color: #64748b; font-size: 13px;">Doc: LQ-001</p>
-                                </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold small text-muted">RUC DEL CLIENTE</label>
+                                <input type="text" class="form-control" id="obRuc" placeholder="Ej: 20123456789" required>
                             </div>
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 25px; font-size: 14px; background-color: #f8fafc; padding: 15px;">
-                                <div>
-                                    <p style="margin: 0 0 4px 0;"><strong>Referencia Obra:</strong> #<span id="pdf-obra-id"></span></p>
-                                </div>
-                                <div style="text-align: right;">
-                                    <p style="margin: 0 0 4px 0;"><strong>Fecha de Emisión:</strong> <span id="pdf-fecha"></span></p>
-                                </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold small text-muted">UBICACIÓN / DIRECCIÓN</label>
+                                <input type="text" class="form-control" id="obUbicacion" placeholder="Ej: Av. Brasil 123, Magdalena" required>
                             </div>
-                            <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 14px;">
+                            <div class="col-12">
+                                <label class="form-label fw-semibold small text-muted">INGENIERO / ENCARGADO</label>
+                                <input type="text" class="form-control" id="obEncargado" placeholder="Ej: Ing. Carlos Mendoza">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold small text-muted">TELÉFONO DE CONTACTO</label>
+                                <input type="text" class="form-control" id="obTelefono" placeholder="Ej: 987654321">
+                            </div>
+                            <div class="col-12 mt-4">
+                                <button type="submit" class="btn btn-primary w-100 py-2"><i class="bi bi-plus-circle me-2"></i>Añadir Obra al Sistema</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div class="col-lg-8">
+                    <div class="card h-100 p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="m-0 fw-bold" style="color: var(--sidebar-bg);"><i class="bi bi-card-list me-2"></i>Directorio de Clientes y Obras</h5>
+                            <button onclick="cargarObrasBase()" class="btn btn-outline-custom btn-sm"><i class="bi bi-arrow-clockwise me-1"></i> Refrescar</button>
+                        </div>
+                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                            <table class="table table-hover align-middle">
                                 <thead>
-                                    <tr style="background-color: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
-                                        <th style="padding: 10px; text-align: center; width: 10%;">Cant.</th>
-                                        <th style="padding: 10px; text-align: left; width: 50%;">Código de Equipo</th>
-                                        <th style="padding: 10px; text-align: right; width: 20%;">V. Reposición</th>
-                                        <th style="padding: 10px; text-align: right; width: 20%;">Subtotal</th>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Proyecto / Cliente</th>
+                                        <th>RUC</th>
+                                        <th>Ubicación</th>
+                                        <th>Encargado</th>
                                     </tr>
                                 </thead>
-                                <tbody id="liqDetallesTabla"></tbody>
+                                <tbody id="tabla-directorio-obras">
+                                    <tr><td colspan="5" class="text-center py-3">Cargando directorio...</td></tr>
+                                </tbody>
                             </table>
-                            <div style="text-align: right; border-top: 2px solid var(--sidebar-bg); padding-top: 15px;">
-                                <h3 style="margin: 0; color: #0f172a; font-size: 18px; font-weight: 700;">MONTO TOTAL: <span style="color: var(--sidebar-bg);">S/ <span id="liqTotal">0.00</span></span></h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISTA 3: CATÁLOGO E INVENTARIO -->
+        <div id="view-inventario" class="app-view">
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <div class="card h-100 p-4 border-top" style="border-top: 4px solid var(--accent) !important;">
+                        <h5 class="fw-bold" style="color: var(--sidebar-bg); margin-bottom: 20px;"><i class="bi bi-box-seam me-2"></i>Registrar Nuevo Material</h5>
+                        <p class="small text-muted mb-3">Agrega un nuevo tipo de andamio o panel al catálogo general.</p>
+                        <form id="form-nuevo-producto" class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label fw-semibold small text-muted">CÓDIGO ÚNICO</label>
+                                <input type="text" class="form-control" id="newId" placeholder="Ej: VIGA-H20-2M" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold small text-muted">DESCRIPCIÓN COMPLETA</label>
+                                <input type="text" class="form-control" id="newNombre" placeholder="Viga de madera H20 de 2 Metros" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-semibold small text-muted">VALOR REPOSICIÓN (S/)</label>
+                                <input type="number" class="form-control" id="newPrecio" step="0.01" placeholder="Ej: 150.00" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-semibold small text-success">STOCK INICIAL</label>
+                                <input type="number" class="form-control" id="newStock" value="0" min="0" required>
+                            </div>
+                            <div class="col-12 mt-4">
+                                <button type="submit" class="btn btn-warning w-100 py-2 fw-bold"><i class="bi bi-plus-circle me-2"></i>Crear Producto</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div class="col-lg-8">
+                    <div class="card h-100 p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold mb-0" style="color: var(--sidebar-bg);"><i class="bi bi-boxes me-2"></i>Inventario General (Físico)</h5>
+                            <button onclick="cargarInventarioBase()" class="btn btn-outline-custom btn-sm"><i class="bi bi-arrow-clockwise me-1"></i> Sincronizar</button>
+                        </div>
+                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                            <table class="table table-hover align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Descripción de Equipo</th>
+                                        <th>Almacén</th>
+                                        <th>En Obra</th>
+                                        <th>Mantenim.</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-inventario"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISTA 4: OPERACIONES EN OBRA -->
+        <div id="view-operaciones" class="app-view">
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="card h-100 p-4">
+                        <h5 class="fw-bold" style="color: var(--sidebar-bg); margin-bottom: 20px;"><i class="bi bi-truck me-2"></i>Guía de Salida (Despacho)</h5>
+                        <form id="form-despacho" class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label fw-semibold small text-muted">SELECCIONAR OBRA / CLIENTE DESTINO</label>
+                                <select class="form-select select-obras" id="obraId" required><option value="">Cargando...</option></select>
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label fw-semibold small text-muted">MATERIAL A DESPACHAR</label>
+                                <select class="form-select select-productos" id="prodId" required><option value="">Cargando...</option></select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold small text-muted">CANTIDAD</label>
+                                <input type="number" class="form-control" id="cantId" placeholder="Ej: 50" required>
+                            </div>
+                            <div class="col-12 mt-4">
+                                <button type="submit" class="btn btn-primary w-100 py-2"><i class="bi bi-send-check me-2"></i>Procesar Guía de Salida</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="card h-100 p-4">
+                        <h5 class="fw-bold" style="color: var(--sidebar-bg); margin-bottom: 20px;"><i class="bi bi-arrow-return-left me-2"></i>Guía de Ingreso (Devolución)</h5>
+                        <form id="form-devolucion" class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label fw-semibold small text-muted">OBRA / CLIENTE DE ORIGEN</label>
+                                <select class="form-select select-obras" id="devObraId" required><option value="">Cargando...</option></select>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label fw-semibold small text-muted">MATERIAL DEVUELTO</label>
+                                <select class="form-select select-productos" id="devProdId" required><option value="">Cargando...</option></select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold small text-success">ÓPTIMOS</label>
+                                <input type="number" class="form-control" id="devBuena" value="0" min="0" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold small text-warning">A REPARAR</label>
+                                <input type="number" class="form-control" id="devMant" value="0" min="0" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold small text-danger">PÉRDIDA</label>
+                                <input type="number" class="form-control" id="devPerdida" value="0" min="0" required>
+                            </div>
+                            <div class="col-12 mt-4">
+                                <button type="submit" class="btn btn-warning w-100 py-2 fw-bold"><i class="bi bi-check-circle me-2"></i>Procesar Guía de Ingreso</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISTA 5: KARDEX -->
+        <div id="view-kardex" class="app-view">
+            <div class="card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="m-0 fw-bold" style="color: var(--sidebar-bg);"><i class="bi bi-journals me-2"></i>Kardex - Historial de Movimientos</h5>
+                    <div>
+                        <button onclick="cargarKardexBase()" class="btn btn-outline-custom btn-sm"><i class="bi bi-arrow-clockwise me-1"></i> Actualizar</button>
+                        <button onclick="exportarExcel()" class="btn btn-primary btn-sm ms-2"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Exportar a Excel</button>
+                    </div>
+                </div>
+                <div class="row g-2 mb-3 p-3 rounded" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div class="col-md-5">
+                        <label class="form-label small text-muted fw-bold mb-1"><i class="bi bi-search me-1"></i> Búsqueda general</label>
+                        <input type="text" id="filtroTexto" class="form-control form-control-sm" placeholder="Buscar por obra, código o tipo..." onkeyup="filtrarKardex()">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted fw-bold mb-1">Fecha Inicio</label>
+                        <input type="date" id="filtroFechaInicio" class="form-control form-control-sm" onchange="filtrarKardex()">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted fw-bold mb-1">Fecha Fin</label>
+                        <input type="date" id="filtroFechaFin" class="form-control form-control-sm" onchange="filtrarKardex()">
+                    </div>
+                    <div class="col-md-1 d-flex align-items-end">
+                        <button class="btn btn-outline-custom btn-sm w-100 mb-1" onclick="limpiarFiltros()"><i class="bi bi-eraser"></i></button>
+                    </div>
+                </div>
+                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Fecha / Hora</th>
+                                <th>Obra (Destino/Origen)</th>
+                                <th>Código Producto</th>
+                                <th>Operación</th>
+                                <th>Responsable</th>
+                                <th class="text-end">Cant.</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-kardex">
+                            <tr><td colspan="6" class="text-center text-muted py-3">Cargando historial...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISTA 6: OPERACIONES INTERNAS (REPARACIÓN) -->
+        <div id="view-interna" class="app-view">
+            <div class="row">
+                <div class="col-lg-6 mx-auto">
+                    <div class="card p-4">
+                        <h5 class="fw-bold" style="color: var(--sidebar-bg); margin-bottom: 20px;"><i class="bi bi-wrench-adjustable me-2"></i>Alta de Equipos Reparados</h5>
+                        <p class="small text-muted mb-4">Esta función traslada los equipos desde "Mantenimiento" nuevamente hacia el "Almacén Principal" para que estén disponibles para alquiler.</p>
+                        <form id="form-reparacion" class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label fw-semibold small text-muted">SELECCIONAR MATERIAL REPARADO</label>
+                                <select class="form-select select-productos" id="repProdId" required><option value="">Cargando...</option></select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold small text-muted">CANTIDAD LISTA PARA ALQUILER</label>
+                                <input type="number" class="form-control" id="repCant" min="1" required>
+                            </div>
+                            <div class="col-12 mt-4">
+                                <button type="submit" class="btn btn-outline-custom w-100 py-2" style="border-color: var(--sidebar-bg); color: var(--sidebar-bg); font-weight: 600;"><i class="bi bi-check2-all me-2"></i>Reintegrar a Stock Disponible</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISTA 7: LIQUIDACIÓN -->
+        <div id="view-liquidacion" class="app-view">
+            <div class="card p-4">
+                <h5 class="fw-bold" style="color: var(--sidebar-bg); margin-bottom: 20px;"><i class="bi bi-file-earmark-ruled me-2"></i>Liquidación Técnica de Obra (Penalidades por Pérdida)</h5>
+                <form id="form-liquidacion" class="row g-3 align-items-end mt-1 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold small text-muted">SELECCIONAR OBRA PARA LIQUIDACIÓN</label>
+                        <select class="form-select select-obras" id="liqObraId" required><option value="">Cargando...</option></select>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary w-100 py-2"><i class="bi bi-calculator me-2"></i>Procesar Cálculo</button>
+                    </div>
+                </form>
+                
+                <div id="resultado-liquidacion" style="display: none; border-top: 2px dashed #e2e8f0; padding-top: 30px;">
+                    <div id="ticket-pdf" style="background-color: #ffffff; padding: 40px; border: 1px solid #e2e8f0; font-family: 'Inter', sans-serif;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--sidebar-bg); padding-bottom: 20px; margin-bottom: 25px;">
+                            <div>
+                                <h2 style="color: var(--sidebar-bg); font-weight: 800; margin: 0; font-size: 22px;">INMOFORMWORK S.A.C.</h2>
+                                <p style="margin: 4px 0 0; color: #64748b; font-size: 13px;">Reporte de Penalidades y Extravíos</p>
+                            </div>
+                            <div style="text-align: right;">
+                                <h4 style="margin: 0; color: #0f172a; font-size: 16px; font-weight: 700;">LIQUIDACIÓN TÉCNICA</h4>
+                                <p style="margin: 2px 0 0; color: #64748b; font-size: 13px;">Doc: LQ-001</p>
                             </div>
                         </div>
-                        <button id="btnDescargarPdf" class="btn btn-warning w-100 mt-3 py-2 fw-bold"><i class="bi bi-file-earmark-pdf me-2"></i>Descargar Documento Legal PDF</button>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 25px; font-size: 14px; background-color: #f8fafc; padding: 15px;">
+                            <div>
+                                <p style="margin: 0 0 4px 0;"><strong>Referencia Obra:</strong> #<span id="pdf-obra-id"></span></p>
+                            </div>
+                            <div style="text-align: right;">
+                                <p style="margin: 0 0 4px 0;"><strong>Fecha de Emisión:</strong> <span id="pdf-fecha"></span></p>
+                            </div>
+                        </div>
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 14px;">
+                            <thead>
+                                <tr style="background-color: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                                    <th style="padding: 10px; text-align: center; width: 10%;">Cant.</th>
+                                    <th style="padding: 10px; text-align: left; width: 50%;">Código de Equipo</th>
+                                    <th style="padding: 10px; text-align: right; width: 20%;">V. Reposición</th>
+                                    <th style="padding: 10px; text-align: right; width: 20%;">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody id="liqDetallesTabla"></tbody>
+                        </table>
+                        <div style="text-align: right; border-top: 2px solid var(--sidebar-bg); padding-top: 15px;">
+                            <h3 style="margin: 0; color: #0f172a; font-size: 18px; font-weight: 700;">MONTO TOTAL: <span style="color: var(--sidebar-bg);">S/ <span id="liqTotal">0.00</span></span></h3>
+                        </div>
+                    </div>
+                    <div class="row mt-4">
+                        <div class="col-md-4 mx-auto">
+                            <button id="btnDescargarPdf" class="btn btn-warning w-100 py-2 fw-bold"><i class="bi bi-file-earmark-pdf me-2"></i>Descargar PDF Oficial</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -471,12 +500,27 @@
         return token ? { 'Authorization': 'Bearer ' + token } : {};
     }
 
+    // --- MAGIA SPA: NAVEGACIÓN ---
+    function mostrarVista(idVista, elementoMenu) {
+        // Ocultar todas las vistas
+        document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
+        // Mostrar la solicitada
+        document.getElementById(idVista).classList.add('active');
+        
+        // Cambiar titulo
+        document.getElementById('titulo-vista').innerText = elementoMenu.innerText;
+
+        // Actualizar menú activo
+        document.querySelectorAll('.nav-links li').forEach(li => li.classList.remove('active'));
+        elementoMenu.classList.add('active');
+    }
+
+    // --- LOGIN ---
     document.getElementById('form-login').addEventListener('submit', async function(e) {
         e.preventDefault();
         const btn = document.getElementById('btnLogin');
         const user = document.getElementById('userInput').value.trim();
         const pass = document.getElementById('passInput').value.trim();
-        
         btn.disabled = true; btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Autenticando...`;
 
         try {
@@ -490,34 +534,27 @@
                 sessionStorage.setItem('rol', data.rol);
                 
                 document.getElementById('error-msg').style.display = 'none';
-                configurarInterfazPorRol(data.rol, user);
+                document.getElementById('lblUsernameSide').innerText = user;
+                document.getElementById('lblRolSide').innerText = data.rol;
+                
+                if (data.rol === 'ALMACENERO') {
+                    document.getElementById('menu-liquidacion').style.display = 'none';
+                } else {
+                    document.getElementById('menu-liquidacion').style.display = 'flex';
+                }
                 
                 document.getElementById('login-screen').style.cssText = 'display: none !important;';
                 document.getElementById('dashboard-wrapper').style.display = 'flex'; 
                 
-                cargarInventario(); 
-                cargarKardex();
-                cargarObras();
+                // Cargar TODO de golpe al inicio
+                cargarDatosIniciales();
             } else { document.getElementById('error-msg').style.display = 'block'; }
         } catch (error) { alert("Error conectando al servidor."); } finally { btn.disabled = false; btn.innerHTML = 'Ingresar al Sistema'; }
     });
 
-    function configurarInterfazPorRol(rol, username) {
-        document.getElementById('lblUsernameSide').innerText = username;
-        document.getElementById('lblRolSide').innerText = rol;
-        if (rol === 'ALMACENERO') {
-            document.getElementById('seccion-liquidacion').style.display = 'none';
-            document.getElementById('menu-liquidacion').style.display = 'none';
-        } else {
-            document.getElementById('seccion-liquidacion').style.display = 'flex';
-            document.getElementById('menu-liquidacion').style.display = 'flex';
-        }
-    }
-
     function cerrarSesion() {
         sessionStorage.clear();
         document.getElementById('userInput').value = ''; document.getElementById('passInput').value = '';
-        document.getElementById('error-msg').style.display = 'none';
         document.getElementById('dashboard-wrapper').style.display = 'none';
         document.getElementById('login-screen').style.display = 'flex';
     }
@@ -530,169 +567,161 @@
         setTimeout(() => { toastEl.className = 'toast text-white border-0 shadow-lg'; }, 3500);
     }
 
+    // --- CARGA CENTRALIZADA ---
+    async function cargarDatosIniciales() {
+        await cargarInventarioBase();
+        await cargarObrasBase();
+        await cargarKardexBase();
+    }
+
     let miGrafico = null;
-    function actualizarGrafico(almacen, obra, mant) {
-        const ctx = document.getElementById('graficoInventario').getContext('2d');
-        if (miGrafico) { miGrafico.destroy(); }
-        miGrafico = new Chart(ctx, {
-            type: 'doughnut', data: { labels: ['Almacén', 'En Obra', 'Mantenimiento'], datasets: [{ data: [almacen, obra, mant], backgroundColor: ['#1e304a', '#f59e0b', '#cbd5e1'], borderWidth: 0 }] },
-            options: { cutout: '65%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-        });
-    }
-
-    // --- NUEVO: LLENAR LOS DROPDOWNS (<SELECT>) ---
-    function llenarSelectsProductos(inventario) {
-        let optionsHtml = '<option value="">Seleccione un producto del catálogo...</option>';
-        inventario.forEach(item => {
-            optionsHtml += `<option value="${item.id_producto}">[${item.id_producto}] - ${item.nombre}</option>`;
-        });
-        document.getElementById('prodId').innerHTML = optionsHtml;
-        document.getElementById('devProdId').innerHTML = optionsHtml;
-        document.getElementById('repProdId').innerHTML = optionsHtml;
-    }
-
-    async function cargarInventario() {
+    
+    // --- MÓDULO: INVENTARIO / CATÁLOGO ---
+    async function cargarInventarioBase() {
         try {
-            const respuesta = await fetch('https://sistema-encofrados.onrender.com/dashboard/inventario/?t=' + Date.now(), { headers: obtenerHeaders() });
-            if (respuesta.status === 401) { mostrarToast("<i class='bi bi-shield-lock'></i> Sesión expirada", "danger"); cerrarSesion(); return; }
-            const datos = await respuesta.json();
-            const tabla = document.getElementById('tabla-inventario'); tabla.innerHTML = ''; 
+            const res = await fetch('https://sistema-encofrados.onrender.com/dashboard/inventario/?t=' + Date.now(), { headers: obtenerHeaders() });
+            if (res.status === 401) { cerrarSesion(); return; }
+            const datos = await res.json();
             
-            // Llenamos los menús desplegables con la data
-            llenarSelectsProductos(datos);
-
+            // 1. Llenar tabla
+            const tabla = document.getElementById('tabla-inventario'); tabla.innerHTML = '';
             let tA = 0, tO = 0, tM = 0;
+            let optionsHtml = '<option value="">Seleccione un material...</option>';
+
             datos.forEach(item => {
-                tabla.innerHTML += `<tr><td class="ps-3 fw-bold text-dark">${item.id_producto}</td><td>${item.nombre}</td><td>${item.cantidad_almacen}</td><td style="color: var(--accent); font-weight: bold;">${item.cantidad_en_obra}</td><td>${item.cantidad_mantenimiento}</td></tr>`;
+                tabla.innerHTML += `<tr><td class="fw-bold">${item.id_producto}</td><td>${item.nombre}</td><td>${item.cantidad_almacen}</td><td style="color:var(--accent);font-weight:bold;">${item.cantidad_en_obra}</td><td>${item.cantidad_mantenimiento}</td></tr>`;
                 tA += item.cantidad_almacen; tO += item.cantidad_en_obra; tM += item.cantidad_mantenimiento;
+                optionsHtml += `<option value="${item.id_producto}">[${item.id_producto}] - ${item.nombre}</option>`;
             });
+
+            // 2. Llenar Selects en formularios
+            document.querySelectorAll('.select-productos').forEach(sel => sel.innerHTML = optionsHtml);
+
+            // 3. Actualizar KPIs Dashboard
             document.getElementById('kpi-almacen').innerText = tA; document.getElementById('kpi-obra').innerText = tO; document.getElementById('kpi-mant').innerText = tM;
             document.getElementById('kpi-util').innerText = (tA + tO + tM) > 0 ? ((tO / (tA + tO + tM)) * 100).toFixed(1) + "%" : "0%";
-            actualizarGrafico(tA, tO, tM);
-        } catch (error) { console.error(error); }
+            
+            // 4. Grafico
+            if (miGrafico) { miGrafico.destroy(); }
+            miGrafico = new Chart(document.getElementById('graficoInventario').getContext('2d'), { type: 'doughnut', data: { labels: ['Almacén', 'En Obra', 'Mant.'], datasets: [{ data: [tA, tO, tM], backgroundColor: ['#1e304a', '#f59e0b', '#cbd5e1'], borderWidth: 0 }] }, options: { cutout: '65%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+
+        } catch (e) { console.error(e); }
     }
 
-    // --- NUEVO: CARGAR EL ESTADO DE LAS OBRAS ---
-    async function cargarObras() {
+    // --- MÓDULO: OBRAS Y CLIENTES ---
+    async function cargarObrasBase() {
         try {
-            const res = await fetch('https://sistema-encofrados.onrender.com/clientes/estado/?t=' + Date.now(), { headers: obtenerHeaders() });
+            const res = await fetch('https://sistema-encofrados.onrender.com/obras/?t=' + Date.now(), { headers: obtenerHeaders() });
             if (!res.ok) return;
             const datos = await res.json();
-            const tabla = document.getElementById('tabla-obras');
-            tabla.innerHTML = '';
             
-            if(datos.length === 0) {
-                tabla.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">No hay materiales alquilados actualmente en ninguna obra.</td></tr>';
-                return;
+            // 1. Llenar tabla del Directorio
+            const tabla = document.getElementById('tabla-directorio-obras'); tabla.innerHTML = '';
+            let optionsHtml = '<option value="">Seleccione una obra destino...</option>';
+
+            if(datos.length === 0) { tabla.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay obras registradas.</td></tr>'; }
+            else {
+                datos.forEach(obra => {
+                    tabla.innerHTML += `<tr><td class="fw-bold">#${obra.id_obra}</td><td><strong>${obra.nombre_proyecto}</strong></td><td>${obra.ruc || '-'}</td><td><i class="bi bi-geo-alt text-muted me-1"></i>${obra.ubicacion || '-'}</td><td>${obra.encargado || '-'}</td></tr>`;
+                    optionsHtml += `<option value="${obra.id_obra}">#${obra.id_obra} - ${obra.nombre_proyecto}</option>`;
+                });
             }
 
-            datos.forEach(obra => {
-                obra.equipos.forEach((equipo, index) => {
-                    // Solo mostramos el ID de la obra en la primera fila de esa obra
-                    let celdaObra = index === 0 ? `<td rowspan="${obra.equipos.length}" class="fw-bold align-middle" style="background:#f8fafc; border-right: 1px solid #e2e8f0;">Obra #${obra.id_obra}</td>` : '';
-                    tabla.innerHTML += `<tr>
-                        ${celdaObra}
-                        <td><span class="badge bg-light text-dark border">${equipo.codigo}</span></td>
-                        <td class="text-muted small">${equipo.nombre}</td>
-                        <td class="text-end fw-bold" style="color: var(--accent);">${equipo.cantidad}</td>
-                    </tr>`;
-                });
-            });
-        } catch(error) { console.error(error); }
+            // 2. Llenar Selects de Obras en formularios
+            document.querySelectorAll('.select-obras').forEach(sel => sel.innerHTML = optionsHtml);
+
+        } catch (e) { console.error(e); }
     }
 
-    async function cargarKardex() {
+    // --- MÓDULO: KARDEX ---
+    async function cargarKardexBase() {
         try {
-            const respuesta = await fetch('https://sistema-encofrados.onrender.com/kardex/?t=' + Date.now(), { headers: obtenerHeaders() });
-            if (respuesta.status === 401) { cerrarSesion(); return; }
-            const datos = await respuesta.json();
+            const res = await fetch('https://sistema-encofrados.onrender.com/kardex/?t=' + Date.now(), { headers: obtenerHeaders() });
+            if (!res.ok) return;
+            const datos = await res.json();
             const tabla = document.getElementById('tabla-kardex'); tabla.innerHTML = '';
+            
             if(datos.length === 0) { tabla.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Sin movimientos</td></tr>'; return; }
             
             datos.forEach(mov => {
-                let badge = "";
-                if(mov.tipo === 'SALIDA') badge = `<span class="badge" style="background:var(--sidebar-bg);"><i class="bi bi-box-arrow-up-right me-1"></i>SALIDA</span>`;
-                else if(mov.tipo === 'DEVOLUCIÓN') badge = `<span class="badge" style="background:var(--accent);"><i class="bi bi-box-arrow-in-down-left me-1"></i>DEVOLUCIÓN</span>`;
-                else badge = `<span class="badge bg-secondary"><i class="bi bi-tools me-1"></i>${mov.tipo}</span>`;
-                
-                tabla.innerHTML += `<tr><td class="small text-muted">${new Date(mov.created_at || mov.fecha).toLocaleString('es-PE')}</td><td><strong>${mov.id_obra}</strong></td><td>${mov.id_producto}</td><td>${badge}</td><td class="small text-muted">${mov.detalle || '-'}</td><td class="text-end fw-bold">${mov.cantidad}</td></tr>`;
+                let badge = mov.tipo === 'SALIDA' ? `<span class="badge" style="background:var(--sidebar-bg);"><i class="bi bi-box-arrow-up-right me-1"></i>SALIDA</span>` : (mov.tipo === 'DEVOLUCIÓN' ? `<span class="badge" style="background:var(--accent);"><i class="bi bi-box-arrow-in-down-left me-1"></i>DEVOLUCIÓN</span>` : `<span class="badge bg-secondary">${mov.tipo}</span>`);
+                tabla.innerHTML += `<tr><td class="small text-muted">${new Date(mov.created_at || mov.fecha).toLocaleString('es-PE')}</td><td>Obra #${mov.id_obra}</td><td>${mov.id_producto}</td><td>${badge}</td><td class="small text-muted">${mov.detalle || '-'}</td><td class="text-end fw-bold">${mov.cantidad}</td></tr>`;
             });
-        } catch (error) { document.getElementById('tabla-kardex').innerHTML = '<tr><td colspan="6" class="text-center text-danger py-3">Error de red.</td></tr>'; }
+        } catch (e) { console.error(e); }
     }
 
-    function inyectarKardexDOM(obra, producto, tipo, cantidad) {
-        const tabla = document.getElementById('tabla-kardex'); if (tabla.querySelector('td[colspan="6"]')) tabla.innerHTML = '';
-        let badge = tipo === 'SALIDA' ? `<span class="badge" style="background:var(--sidebar-bg);">SALIDA</span>` : `<span class="badge" style="background:var(--accent);">${tipo}</span>`;
-        if(tipo === 'REPARACIÓN' || tipo === 'NUEVO_INGRESO') badge = `<span class="badge bg-secondary">${tipo}</span>`;
-        
-        const nuevaFila = `<tr style="background-color: #e0f2fe; transition: background-color 2s;"><td class="small text-muted">${new Date().toLocaleString('es-PE')}</td><td><strong>${obra || 'Almacén'}</strong></td><td>${producto}</td><td>${badge}</td><td class="small text-muted">Procesado</td><td class="text-end fw-bold">${cantidad}</td></tr>`;
-        tabla.insertAdjacentHTML('afterbegin', nuevaFila);
-        setTimeout(() => { cargarInventario(); cargarKardex(); cargarObras(); }, 1500);
-    }
+    // --- FORMULARIOS (POST) ---
+    document.getElementById('form-nueva-obra').addEventListener('submit', async function(e) {
+        e.preventDefault(); const btn = this.querySelector('button[type="submit"]'); const txt = btn.innerHTML; btn.disabled = true; btn.innerHTML = `Guardando...`;
+        const payload = { nombre_proyecto: document.getElementById('obNombre').value, ruc: document.getElementById('obRuc').value, ubicacion: document.getElementById('obUbicacion').value, encargado: document.getElementById('obEncargado').value, telefono: document.getElementById('obTelefono').value };
+        try {
+            const res = await fetch('https://sistema-encofrados.onrender.com/obras/', { method: 'POST', headers: { 'Content-Type': 'application/json', ...obtenerHeaders() }, body: JSON.stringify(payload) });
+            if (res.ok) { mostrarToast("<i class='bi bi-building-add'></i> Obra registrada correctamente"); this.reset(); cargarObrasBase(); }
+            else { mostrarToast("Error al registrar", "danger"); }
+        } catch (e) { mostrarToast("Error de conexión", "danger"); } finally { btn.disabled = false; btn.innerHTML = txt; }
+    });
+
+    document.getElementById('form-nuevo-producto').addEventListener('submit', async function(e) {
+        e.preventDefault(); const btn = this.querySelector('button[type="submit"]'); const txt = btn.innerHTML; btn.disabled = true; btn.innerHTML = `Guardando...`;
+        const payload = { id_producto: document.getElementById('newId').value, nombre: document.getElementById('newNombre').value, costo_reposicion: parseFloat(document.getElementById('newPrecio').value), cantidad_inicial: parseInt(document.getElementById('newStock').value) };
+        try {
+            const res = await fetch('https://sistema-encofrados.onrender.com/productos/', { method: 'POST', headers: { 'Content-Type': 'application/json', ...obtenerHeaders() }, body: JSON.stringify(payload) });
+            if (res.ok) { mostrarToast("<i class='bi bi-box-seam'></i> Producto catalogado con éxito"); this.reset(); cargarInventarioBase(); }
+            else { const err = await res.json(); mostrarToast("<i class='bi bi-x-circle'></i> " + (err.detail || "Error"), "danger"); }
+        } catch (e) { mostrarToast("Error de conexión", "danger"); } finally { btn.disabled = false; btn.innerHTML = txt; }
+    });
 
     document.getElementById('form-despacho').addEventListener('submit', async function(e) {
         e.preventDefault(); const btn = this.querySelector('button[type="submit"]'); const txt = btn.innerHTML; btn.disabled = true; btn.innerHTML = `Procesando...`;
-        const idObra = parseInt(document.getElementById('obraId').value); const idProd = document.getElementById('prodId').value; const cant = parseInt(document.getElementById('cantId').value);
+        const payload = { id_obra: parseInt(document.getElementById('obraId').value), id_producto: document.getElementById('prodId').value, cantidad: parseInt(document.getElementById('cantId').value) };
         try {
-            const res = await fetch('https://sistema-encofrados.onrender.com/despachos/', { method: 'POST', headers: { 'Content-Type': 'application/json', ...obtenerHeaders() }, body: JSON.stringify({ id_obra: idObra, id_producto: idProd, cantidad: cant }) });
-            if (res.ok) { mostrarToast("<i class='bi bi-check-circle'></i> Despacho registrado"); document.getElementById('cantId').value = ''; document.getElementById('prodId').value = ''; inyectarKardexDOM(idObra, idProd, 'SALIDA', cant); }
+            const res = await fetch('https://sistema-encofrados.onrender.com/despachos/', { method: 'POST', headers: { 'Content-Type': 'application/json', ...obtenerHeaders() }, body: JSON.stringify(payload) });
+            if (res.ok) { mostrarToast("<i class='bi bi-check-circle'></i> Despacho procesado"); this.reset(); cargarDatosIniciales(); }
             else { const err = await res.json(); mostrarToast("<i class='bi bi-x-circle'></i> " + (err.detail || "Error"), "danger"); }
-        } catch (error) { mostrarToast("<i class='bi bi-wifi-off'></i> Error de conexión", "danger"); } finally { btn.disabled = false; btn.innerHTML = txt; }
+        } catch (e) { mostrarToast("Error de conexión", "danger"); } finally { btn.disabled = false; btn.innerHTML = txt; }
     });
 
     document.getElementById('form-devolucion').addEventListener('submit', async function(e) {
         e.preventDefault(); const btn = this.querySelector('button[type="submit"]'); const txt = btn.innerHTML; btn.disabled = true; btn.innerHTML = `Procesando...`;
-        const idObra = parseInt(document.getElementById('devObraId').value); const idProd = document.getElementById('devProdId').value;
-        const cB = parseInt(document.getElementById('devBuena').value) || 0; const cM = parseInt(document.getElementById('devMant').value) || 0; const cP = parseInt(document.getElementById('devPerdida').value) || 0;
+        const payload = { id_obra: parseInt(document.getElementById('devObraId').value), id_producto: document.getElementById('devProdId').value, cantidad_buena: parseInt(document.getElementById('devBuena').value)||0, cantidad_mantenimiento: parseInt(document.getElementById('devMant').value)||0, cantidad_perdida: parseInt(document.getElementById('devPerdida').value)||0 };
         try {
-            const res = await fetch('https://sistema-encofrados.onrender.com/devoluciones/', { method: 'POST', headers: { 'Content-Type': 'application/json', ...obtenerHeaders() }, body: JSON.stringify({ id_obra: idObra, id_producto: idProd, cantidad_buena: cB, cantidad_mantenimiento: cM, cantidad_perdida: cP }) });
-            if (res.ok) { mostrarToast("<i class='bi bi-check-circle'></i> Devolución completada"); document.getElementById('devBuena').value='0'; document.getElementById('devMant').value='0'; document.getElementById('devPerdida').value='0'; document.getElementById('devProdId').value=''; inyectarKardexDOM(idObra, idProd, 'DEVOLUCIÓN', (cB+cM+cP)); }
+            const res = await fetch('https://sistema-encofrados.onrender.com/devoluciones/', { method: 'POST', headers: { 'Content-Type': 'application/json', ...obtenerHeaders() }, body: JSON.stringify(payload) });
+            if (res.ok) { mostrarToast("<i class='bi bi-check-circle'></i> Devolución procesada"); this.reset(); cargarDatosIniciales(); }
             else { const err = await res.json(); mostrarToast("<i class='bi bi-x-circle'></i> " + (err.detail || "Error"), "danger"); }
-        } catch (error) { mostrarToast("<i class='bi bi-wifi-off'></i> Error", "danger"); } finally { btn.disabled = false; btn.innerHTML = txt; }
-    });
-
-    document.getElementById('form-nuevo-producto').addEventListener('submit', async function(e) {
-        e.preventDefault(); const btn = this.querySelector('button[type="submit"]'); const txt = btn.innerHTML; btn.disabled = true; btn.innerHTML = `Registrando...`;
-        const idProd = document.getElementById('newId').value; const nom = document.getElementById('newNombre').value; const precio = parseFloat(document.getElementById('newPrecio').value); const stock = parseInt(document.getElementById('newStock').value);
-        try {
-            const res = await fetch('https://sistema-encofrados.onrender.com/productos/', { method: 'POST', headers: { 'Content-Type': 'application/json', ...obtenerHeaders() }, body: JSON.stringify({ id_producto: idProd, nombre: nom, costo_reposicion: precio, cantidad_inicial: stock }) });
-            if (res.ok) { mostrarToast("<i class='bi bi-box-seam'></i> Producto catalogado con éxito"); this.reset(); cargarInventario(); }
-            else { const err = await res.json(); mostrarToast("<i class='bi bi-x-circle'></i> " + (err.detail || "Error"), "danger"); }
-        } catch (error) { mostrarToast("Error de conexión", "danger"); } finally { btn.disabled = false; btn.innerHTML = txt; }
+        } catch (e) { mostrarToast("Error de conexión", "danger"); } finally { btn.disabled = false; btn.innerHTML = txt; }
     });
 
     document.getElementById('form-reparacion').addEventListener('submit', async function(e) {
         e.preventDefault(); const btn = this.querySelector('button[type="submit"]'); const txt = btn.innerHTML; btn.disabled = true; btn.innerHTML = `Procesando...`;
-        const idProd = document.getElementById('repProdId').value; const cant = parseInt(document.getElementById('repCant').value);
+        const payload = { id_producto: document.getElementById('repProdId').value, cantidad: parseInt(document.getElementById('repCant').value) };
         try {
-            const res = await fetch('https://sistema-encofrados.onrender.com/reparaciones/', { method: 'POST', headers: { 'Content-Type': 'application/json', ...obtenerHeaders() }, body: JSON.stringify({ id_producto: idProd, cantidad: cant }) });
-            if (res.ok) { mostrarToast("<i class='bi bi-tools'></i> Equipos retornados al almacén"); this.reset(); inyectarKardexDOM('', idProd, 'REPARACIÓN', cant); }
+            const res = await fetch('https://sistema-encofrados.onrender.com/reparaciones/', { method: 'POST', headers: { 'Content-Type': 'application/json', ...obtenerHeaders() }, body: JSON.stringify(payload) });
+            if (res.ok) { mostrarToast("<i class='bi bi-tools'></i> Equipos retornados a stock"); this.reset(); cargarDatosIniciales(); }
             else { const err = await res.json(); mostrarToast("<i class='bi bi-x-circle'></i> " + (err.detail || "Error"), "danger"); }
-        } catch (error) { mostrarToast("Error de conexión", "danger"); } finally { btn.disabled = false; btn.innerHTML = txt; }
+        } catch (e) { mostrarToast("Error", "danger"); } finally { btn.disabled = false; btn.innerHTML = txt; }
     });
 
+    // --- LIQUIDACIÓN Y UTILIDADES ---
     document.getElementById('form-liquidacion').addEventListener('submit', async function(e) {
         e.preventDefault(); const idObra = document.getElementById('liqObraId').value;
         try {
-            const respuesta = await fetch(`https://sistema-encofrados.onrender.com/obras/${idObra}/liquidacion/`, { headers: obtenerHeaders() });
-            if (respuesta.ok) {
-                const datos = await respuesta.json();
+            const res = await fetch(`https://sistema-encofrados.onrender.com/obras/${idObra}/liquidacion/`, { headers: obtenerHeaders() });
+            if (res.ok) {
+                const datos = await res.json();
                 document.getElementById('resultado-liquidacion').style.display = 'block'; document.getElementById('liqTotal').innerText = datos.penalidad_total_moneda.toFixed(2);
                 document.getElementById('pdf-obra-id').innerText = String(idObra).padStart(4, '0'); document.getElementById('pdf-fecha').innerText = new Date().toLocaleDateString('es-PE');
-                const tablaBody = document.getElementById('liqDetallesTabla'); tablaBody.innerHTML = '';
-                if(datos.desglose_perdidas.length === 0) { tablaBody.innerHTML = '<tr><td colspan="4" style="padding: 15px; text-align: center;">No hay penalidades. Devolución al 100%.</td></tr>'; } 
-                else { datos.desglose_perdidas.forEach(item => { tablaBody.innerHTML += `<tr><td style="padding: 12px; text-align: center;">${item.cantidad_perdida}</td><td style="padding: 12px;">${item.producto}</td><td style="padding: 12px; text-align: right;">S/ ${item.costo_unitario.toFixed(2)}</td><td style="padding: 12px; text-align: right; font-weight: bold;">S/ ${item.subtotal_cobro.toFixed(2)}</td></tr>`; }); }
-                mostrarToast("<i class='bi bi-check-all'></i> Liquidación generada");
-            } else { if (respuesta.status === 401) cerrarSesion(); else mostrarToast("Error al calcular", "danger"); }
-        } catch (error) { mostrarToast("Error de red", "danger"); }
+                const tBody = document.getElementById('liqDetallesTabla'); tBody.innerHTML = '';
+                if(datos.desglose_perdidas.length === 0) { tBody.innerHTML = '<tr><td colspan="4" style="padding: 15px; text-align: center;">Sin penalidades. Devolución 100%.</td></tr>'; } 
+                else { datos.desglose_perdidas.forEach(item => { tBody.innerHTML += `<tr><td style="padding: 12px; text-align: center;">${item.cantidad_perdida}</td><td style="padding: 12px;">${item.producto}</td><td style="padding: 12px; text-align: right;">S/ ${item.costo_unitario.toFixed(2)}</td><td style="padding: 12px; text-align: right; font-weight: bold;">S/ ${item.subtotal_cobro.toFixed(2)}</td></tr>`; }); }
+                mostrarToast("<i class='bi bi-check-all'></i> Cálculo terminado");
+            } else { mostrarToast("Error al calcular", "danger"); }
+        } catch (e) { mostrarToast("Error de red", "danger"); }
     });
 
     document.getElementById('btnDescargarPdf').addEventListener('click', function() {
-        window.scrollTo(0, 0); window.getSelection().removeAllRanges();
-        html2pdf().set({ margin: 0.5, filename: 'Liquidacion_Obra_' + document.getElementById('liqObraId').value + '.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, scrollY: 0 }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } }).from(document.getElementById('ticket-pdf')).save();
-        mostrarToast("<i class='bi bi-download'></i> PDF descargado");
+        window.scrollTo(0, 0); html2pdf().set({ margin: 0.5, filename: 'Liquidacion_Obra_' + document.getElementById('liqObraId').value + '.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, scrollY: 0 }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } }).from(document.getElementById('ticket-pdf')).save();
     });
-    
+
     function filtrarKardex() {
         const t = document.getElementById('filtroTexto').value.toLowerCase(); const fI = document.getElementById('filtroFechaInicio').value; const fF = document.getElementById('filtroFechaFin').value;
         document.querySelectorAll('#tabla-kardex tr').forEach(fila => {
@@ -700,9 +729,9 @@
             const c = fila.getElementsByTagName('td'); const txt = c[1].innerText.toLowerCase() + c[2].innerText.toLowerCase() + c[3].innerText.toLowerCase();
             let cT = txt.includes(t), cF = true;
             if (fI || fF) {
-                const partes = c[0].innerText.split(',')[0].trim().split('/');
-                if(partes.length === 3) {
-                    const fFila = new Date(partes[2], partes[1] - 1, partes[0]);
+                const p = c[0].innerText.split(',')[0].trim().split('/');
+                if(p.length === 3) {
+                    const fFila = new Date(p[2], p[1] - 1, p[0]);
                     if (fI && fFila < new Date(fI.split('-')[0], fI.split('-')[1] - 1, fI.split('-')[2])) cF = false;
                     if (fF && fFila > new Date(fF.split('-')[0], fF.split('-')[1] - 1, fF.split('-')[2], 23, 59, 59)) cF = false;
                 }
@@ -715,7 +744,7 @@
     function exportarExcel() {
         const tabla = document.getElementById('tabla-kardex');
         if (tabla.innerText.includes('Sin movimientos') || tabla.innerText.includes('Cargando')) return mostrarToast("No hay datos", "danger");
-        XLSX.writeFile(XLSX.utils.table_to_book(document.querySelector('.table-responsive table'), { sheet: "Kardex" }), `Kardex_${new Date().toLocaleDateString('es-PE').replace(/\//g, '-')}.xlsx`);
+        XLSX.writeFile(XLSX.utils.table_to_book(document.querySelector('#view-kardex table'), { sheet: "Kardex" }), `Kardex_${new Date().toLocaleDateString('es-PE').replace(/\//g, '-')}.xlsx`);
     }
 </script>
 </body>
