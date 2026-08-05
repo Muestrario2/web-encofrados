@@ -609,30 +609,59 @@
     }
 
     // --- MÓDULO: OBRAS Y CLIENTES ---
+    // --- MÓDULO: OBRAS Y CLIENTES ---
     async function cargarObrasBase() {
         try {
             const res = await fetch('https://sistema-encofrados.onrender.com/obras/?t=' + Date.now(), { headers: obtenerHeaders() });
             if (!res.ok) return;
             const datos = await res.json();
             
-            // 1. Llenar tabla del Directorio
             const tabla = document.getElementById('tabla-directorio-obras'); tabla.innerHTML = '';
             let optionsHtml = '<option value="">Seleccione una obra destino...</option>';
 
-            if(datos.length === 0) { tabla.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay obras registradas.</td></tr>'; }
+            if(datos.length === 0) { tabla.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No hay obras registradas en el sistema.</td></tr>'; }
             else {
                 datos.forEach(obra => {
-                    tabla.innerHTML += `<tr><td class="fw-bold">#${obra.id_obra}</td><td><strong>${obra.nombre_proyecto}</strong></td><td>${obra.ruc || '-'}</td><td><i class="bi bi-geo-alt text-muted me-1"></i>${obra.ubicacion || '-'}</td><td>${obra.encargado || '-'}</td></tr>`;
+                    tabla.innerHTML += `<tr>
+                        <td class="fw-bold text-secondary">#${obra.id_obra}</td>
+                        <td><strong style="color: var(--sidebar-bg);">${obra.nombre_proyecto}</strong></td>
+                        <td>${obra.ruc || '-'}</td>
+                        <td class="small"><i class="bi bi-geo-alt text-muted me-1"></i>${obra.ubicacion || '-'}</td>
+                        <td class="small">${obra.encargado || '-'}</td>
+                        <td class="text-end">
+                            <button onclick="eliminarObra(${obra.id_obra})" class="btn btn-sm btn-outline-danger" title="Eliminar Obra"><i class="bi bi-trash3-fill"></i></button>
+                        </td>
+                    </tr>`;
                     optionsHtml += `<option value="${obra.id_obra}">#${obra.id_obra} - ${obra.nombre_proyecto}</option>`;
                 });
             }
 
-            // 2. Llenar Selects de Obras en formularios
             document.querySelectorAll('.select-obras').forEach(sel => sel.innerHTML = optionsHtml);
-
         } catch (e) { console.error(e); }
     }
 
+    // --- NUEVO: FUNCIÓN PARA BORRAR OBRAS ---
+    async function eliminarObra(idObra) {
+        if(!confirm(`⚠️ ¿Estás totalmente seguro que deseas eliminar la Obra #${idObra}? Esta acción no se puede deshacer.`)) return;
+        
+        try {
+            const res = await fetch(`https://sistema-encofrados.onrender.com/obras/${idObra}`, {
+                method: 'DELETE',
+                headers: obtenerHeaders()
+            });
+            
+            if (res.ok) {
+                mostrarToast("<i class='bi bi-trash3'></i> Obra eliminada correctamente", "success");
+                cargarObrasBase(); // Recarga la tabla automáticamente
+            } else {
+                const err = await res.json();
+                mostrarToast("<i class='bi bi-exclamation-triangle'></i> " + (err.detail || "Error al eliminar"), "danger");
+            }
+        } catch (e) {
+            mostrarToast("<i class='bi bi-wifi-off'></i> Error de conexión", "danger");
+        }
+    }
+    
     // --- MÓDULO: KARDEX ---
     async function cargarKardexBase() {
         try {
